@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>流程框图</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --fg: #1d2129; --muted: #5f6772; --line: #d6d3ca;
+    --blue: #2f5bd3; --blue-soft: #e9effd;
+    --green: #12805c; --green-soft: #e4f4ec;
+    --amber: #b25e09; --amber-soft: #fcf0de;
+    --violet: #6f42c1; --violet-soft: #f0e9fb;
+    --slate: #556070; --slate-soft: #eceef2;
+    --red: #c4302b; --red-soft: #fbeae9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141619; --surface: #1c1f25; --fg: #e6e8eb; --muted: #9ba4ae; --line: #363b44;
+      --blue: #8eabff; --blue-soft: #1d2a48;
+      --green: #62d1a5; --green-soft: #15322a;
+      --amber: #f0a95c; --amber-soft: #392916;
+      --violet: #baa0ff; --violet-soft: #2b2341;
+      --slate: #a9b2bf; --slate-soft: #262a31;
+      --red: #ff7d74; --red-soft: #3c1d1c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141619; --surface: #1c1f25; --fg: #e6e8eb; --muted: #9ba4ae; --line: #363b44;
+    --blue: #8eabff; --blue-soft: #1d2a48;
+    --green: #62d1a5; --green-soft: #15322a;
+    --amber: #f0a95c; --amber-soft: #392916;
+    --violet: #baa0ff; --violet-soft: #2b2341;
+    --slate: #a9b2bf; --slate-soft: #262a31;
+    --red: #ff7d74; --red-soft: #3c1d1c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body { font: 15px/1.65 "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 14px; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; }
+  nav a { color: var(--fg); text-decoration: none; border: 1px solid var(--line); background: var(--surface);
+          border-radius: 999px; padding: 2px 12px; font-size: 13.5px; }
+  nav a:hover { border-color: var(--blue); color: var(--blue); }
+  nav a.other { border-color: var(--blue); color: var(--blue); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 14px 0 0; font-size: 13px; color: var(--muted); }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid; vertical-align: -2px; margin-right: 6px; }
+  section { margin-top: 36px; }
+  .note { color: var(--muted); margin: 0; font-size: 14px; }
+  figure { margin: 12px 0 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .scroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--fg); }
+  figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.92em; overflow-wrap: anywhere; }
+
+  /* SVG 图元 */
+  svg text { font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif; }
+  .n      { fill: var(--surface);     stroke: var(--line);   stroke-width: 1.2; }
+  .n-pill { fill: var(--surface);     stroke: var(--fg);     stroke-width: 1.2; }
+  .n-task { fill: var(--blue-soft);   stroke: var(--blue);   stroke-width: 1.2; }
+  .n-dev  { fill: var(--green-soft);  stroke: var(--green);  stroke-width: 1.2; }
+  .n-q    { fill: var(--amber-soft);  stroke: var(--amber);  stroke-width: 1.2; }
+  .n-drv  { fill: var(--slate-soft);  stroke: var(--slate);  stroke-width: 1.2; }
+  .n-bad  { fill: var(--red-soft);    stroke: var(--red);    stroke-width: 1.2; }
+  .n-dec  { fill: var(--surface);     stroke: var(--fg);     stroke-width: 1.2; }
+  .cell   { fill: var(--surface);     stroke: var(--slate);  stroke-width: 1; }
+  .cell-u { fill: var(--amber-soft);  stroke: var(--amber);  stroke-width: 1; }
+  .t  { font-size: 13px; font-weight: 600; fill: var(--fg); }
+  .s  { font-size: 11.5px; fill: var(--muted); }
+  .lb { font-size: 12.5px; fill: var(--fg); }
+  .al { font-size: 11.5px; fill: var(--fg); }
+  .al-q   { font-size: 11.5px; fill: var(--amber); }
+  .al-bad { font-size: 11.5px; fill: var(--red); }
+  .e      { stroke: currentColor; stroke-width: 1.3; fill: none; }
+  .e-q    { stroke: var(--amber); stroke-width: 1.3; fill: none; }
+  .e-bad  { stroke: var(--red); stroke-width: 1.3; fill: none; stroke-dasharray: 5 4; }
+  .life   { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+  .ah     { fill: currentColor; }
+  .ah-q   { fill: var(--amber); }
+  .ah-bad { fill: var(--red); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>CommGateway 流程框图</h1>
+    <p class="lead">STM32F407ZGT6 · FreeRTOS 11.2.0 · lwIP 2.2.1。终端走网口 UDP，北斗走 RS422（USART6），天通走 RS232（USART3）。图里的函数名、时间、缓冲大小都取自 <code>Projects/CommGateway</code> 的源码。</p>
+    <nav>
+      <a href="#f1">1 系统启动</a>
+      <a href="#f2">2 终端任务</a>
+      <a href="#f3">3 北斗任务</a>
+      <a href="#f4">4 串口收发</a>
+      <a href="#f5">5 发送短报文</a>
+      <a href="#f6">6 接收短报文</a>
+      <a href="#f7">7 SQ / status</a>
+      <a href="#f8">8 天通任务</a>
+      <a href="#f9">9 看门狗</a>
+      <a class="other" href="函数模块分析图.html">函数模块分析图 →</a>
+      <a class="other" href="运作流程详解.html">运作流程详解 →</a>
+    </nav>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--blue-soft);border-color:var(--blue)"></i>本机任务</span>
+      <span><i class="sw" style="background:var(--green-soft);border-color:var(--green)"></i>外部设备</span>
+      <span><i class="sw" style="background:var(--slate-soft);border-color:var(--slate)"></i>片上外设 / 驱动</span>
+      <span><i class="sw" style="background:var(--amber-soft);border-color:var(--amber)"></i>队列 / 缓冲 / 共享数据</span>
+      <span><i class="sw" style="background:var(--red-soft);border-color:var(--red)"></i>失败 / 复位路径</span>
+    </div>
+  </header>
+
+  <!-- ============================== 1 系统启动 ============================== -->
+  <section id="f1">
+    <h2>1. 系统启动</h2>
+    <p class="note">main() 做不依赖网络的初始化并创建 WDG / BD / TT / START；北斗、天通走串口，调度一开始就运行；只有终端任务 TERM 要等 START 把网络初始化好。</p>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1100 530" role="img" aria-label="系统启动：main 依次初始化日志、看门狗、UUID 随机源、状态表和队列，创建 WDG、BD、TT、START 四个任务后启动调度器。BD、TT 打开各自的串口后进入主循环；START 初始化网卡（失败每 2 秒重试）和 lwIP，然后创建 TERM 并删除自己。">
+        <defs>
+          <marker id="f1a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="f1b" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-bad" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <text class="t" x="190" y="20" text-anchor="middle">main()：调度器启动前</text>
+        <text class="t" x="540" y="20" text-anchor="middle">BD / TT：上电就运行</text>
+        <text class="t" x="840" y="20" text-anchor="middle">START：等网络（优先级 2）</text>
+
+        <!-- main() -->
+        <rect class="n-pill" x="40" y="50" width="300" height="34" rx="17"/>
+        <text class="lb" x="190" y="72" text-anchor="middle">上电 / 复位 → SystemInit：168 MHz</text>
+        <rect class="n" x="40" y="104" width="300" height="34" rx="6"/>
+        <text class="lb" x="190" y="126" text-anchor="middle">NVIC_PriorityGroupConfig：只用抢占优先级</text>
+        <rect class="n" x="40" y="158" width="300" height="34" rx="6"/>
+        <text class="lb" x="190" y="180" text-anchor="middle">log_init()：USART1，打印复位原因</text>
+        <rect class="n" x="40" y="212" width="300" height="34" rx="6"/>
+        <text class="lb" x="190" y="234" text-anchor="middle">wdg_init()：启动 IWDG（约 4 s）</text>
+        <rect class="n-drv" x="40" y="266" width="300" height="34" rx="6"/>
+        <text class="lb" x="190" y="288" text-anchor="middle">uuid_init()：打开 RNG（UUID 随机源）</text>
+        <rect class="n-q" x="40" y="320" width="300" height="34" rx="6"/>
+        <text class="lb" x="190" y="342" text-anchor="middle">dev_status_init()：状态表 + 互斥锁</text>
+        <rect class="n-q" x="40" y="374" width="300" height="34" rx="6"/>
+        <text class="lb" x="190" y="396" text-anchor="middle">term_init() / bd_init()：建队列（4 / 2）</text>
+        <rect class="n-task" x="40" y="428" width="300" height="34" rx="6"/>
+        <text class="lb" x="190" y="450" text-anchor="middle">创建 WDG(1)、BD(4)、TT(3)、START(2)</text>
+        <rect class="n-pill" x="40" y="482" width="300" height="34" rx="17"/>
+        <text class="lb" x="190" y="504" text-anchor="middle">vTaskStartScheduler()</text>
+        <line class="e" x1="190" y1="84"  x2="190" y2="104" marker-end="url(#f1a)"/>
+        <line class="e" x1="190" y1="138" x2="190" y2="158" marker-end="url(#f1a)"/>
+        <line class="e" x1="190" y1="192" x2="190" y2="212" marker-end="url(#f1a)"/>
+        <line class="e" x1="190" y1="246" x2="190" y2="266" marker-end="url(#f1a)"/>
+        <line class="e" x1="190" y1="300" x2="190" y2="320" marker-end="url(#f1a)"/>
+        <line class="e" x1="190" y1="354" x2="190" y2="374" marker-end="url(#f1a)"/>
+        <line class="e" x1="190" y1="408" x2="190" y2="428" marker-end="url(#f1a)"/>
+        <line class="e" x1="190" y1="462" x2="190" y2="482" marker-end="url(#f1a)"/>
+
+        <!-- 开始调度：分到三列 -->
+        <polyline class="e" points="340,499 370,499 370,36 840,36 840,50" marker-end="url(#f1a)"/>
+        <line class="e" x1="370" y1="67" x2="400" y2="67" marker-end="url(#f1a)"/>
+        <line class="e" x1="370" y1="247" x2="400" y2="247" marker-end="url(#f1a)"/>
+        <text class="al" x="378" y="470">开始调度</text>
+
+        <!-- BD / TT -->
+        <rect class="n-pill" x="400" y="50" width="280" height="34" rx="17"/>
+        <text class="lb" x="540" y="72" text-anchor="middle">BD 任务（优先级 4）开始运行</text>
+        <rect class="n-drv" x="400" y="104" width="280" height="44" rx="6"/>
+        <text class="t" x="540" y="122" text-anchor="middle">serial_open(SERIAL_BD, 38400)</text>
+        <text class="s" x="540" y="139" text-anchor="middle">USART6：DMA 循环接收 + 空闲中断</text>
+        <rect class="n-task" x="400" y="168" width="280" height="34" rx="6"/>
+        <text class="lb" x="540" y="190" text-anchor="middle">主循环：读卡 / 信号 / 短报文（图 3）</text>
+        <rect class="n-pill" x="400" y="230" width="280" height="34" rx="17"/>
+        <text class="lb" x="540" y="252" text-anchor="middle">TT 任务（优先级 3）开始运行</text>
+        <rect class="n-drv" x="400" y="284" width="280" height="44" rx="6"/>
+        <text class="t" x="540" y="302" text-anchor="middle">serial_open(SERIAL_TT, 115200)</text>
+        <text class="s" x="540" y="319" text-anchor="middle">USART3：RS232</text>
+        <rect class="n-task" x="400" y="348" width="280" height="34" rx="6"/>
+        <text class="lb" x="540" y="370" text-anchor="middle">主循环：按行打印收到的数据（图 8）</text>
+        <line class="e" x1="540" y1="84"  x2="540" y2="104" marker-end="url(#f1a)"/>
+        <line class="e" x1="540" y1="148" x2="540" y2="168" marker-end="url(#f1a)"/>
+        <line class="e" x1="540" y1="264" x2="540" y2="284" marker-end="url(#f1a)"/>
+        <line class="e" x1="540" y1="328" x2="540" y2="348" marker-end="url(#f1a)"/>
+        <text class="s" x="540" y="414" text-anchor="middle">串口和网络无关：网线没插也照常</text>
+        <text class="s" x="540" y="432" text-anchor="middle">读卡、收信号、喂狗</text>
+
+        <!-- START -->
+        <rect class="n-pill" x="720" y="50" width="240" height="34" rx="17"/>
+        <text class="lb" x="840" y="72" text-anchor="middle">START 任务开始运行</text>
+        <rect class="n" x="720" y="104" width="240" height="44" rx="6"/>
+        <text class="t" x="840" y="122" text-anchor="middle">ethernetif_hw_init()</text>
+        <text class="s" x="840" y="139" text-anchor="middle">引脚、时钟、MAC/DMA、PHY 自协商</text>
+        <polygon class="n-dec" points="760,200 840,172 920,200 840,228"/>
+        <text class="lb" x="840" y="204" text-anchor="middle">网线 / PHY 就绪？</text>
+        <rect class="n-bad" x="970" y="183" width="120" height="34" rx="6"/>
+        <text class="lb" x="1030" y="205" text-anchor="middle">打印日志，等 2 s</text>
+        <rect class="n" x="720" y="258" width="240" height="44" rx="6"/>
+        <text class="t" x="840" y="276" text-anchor="middle">tcpip_init()</text>
+        <text class="s" x="840" y="293" text-anchor="middle">lwIP 协议栈，创建 TCP/IP 任务（6）</text>
+        <rect class="n" x="720" y="322" width="240" height="44" rx="6"/>
+        <text class="t" x="840" y="340" text-anchor="middle">netif_add() + netif_set_up()</text>
+        <text class="s" x="840" y="357" text-anchor="middle">静态 IP，创建 ETH_RX 任务（7）</text>
+        <rect class="n-task" x="720" y="386" width="240" height="34" rx="6"/>
+        <text class="lb" x="840" y="408" text-anchor="middle">创建 TERM（4）：UDP 4220（图 2）</text>
+        <rect class="n-pill" x="720" y="440" width="240" height="34" rx="17"/>
+        <text class="lb" x="840" y="462" text-anchor="middle">vTaskDelete()：START 结束</text>
+        <line class="e" x1="840" y1="84"  x2="840" y2="104" marker-end="url(#f1a)"/>
+        <line class="e" x1="840" y1="148" x2="840" y2="172" marker-end="url(#f1a)"/>
+        <line class="e" x1="840" y1="228" x2="840" y2="258" marker-end="url(#f1a)"/>
+        <text class="al" x="848" y="247">是</text>
+        <line class="e-bad" x1="920" y1="200" x2="970" y2="200" marker-end="url(#f1b)"/>
+        <text class="al-bad" x="945" y="193" text-anchor="middle">否</text>
+        <polyline class="e-bad" points="1030,183 1030,126 960,126" marker-end="url(#f1b)"/>
+        <text class="al-bad" x="1036" y="158">重试</text>
+        <line class="e" x1="840" y1="302" x2="840" y2="322" marker-end="url(#f1a)"/>
+        <line class="e" x1="840" y1="366" x2="840" y2="386" marker-end="url(#f1a)"/>
+        <line class="e" x1="840" y1="420" x2="840" y2="440" marker-end="url(#f1a)"/>
+      </svg>
+      </div>
+      <figcaption>等网线期间 TERM 还没创建、没登记看门狗；BD / TT 照常报平安，WDG 照常喂狗，所以网线晚插不会导致复位。TERM 创建后第一件事是打开 UDP 4220 端口。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================== 2 终端任务 ============================== -->
+  <section id="f2">
+    <h2>2. 终端任务 TERM 主循环</h2>
+    <p class="note">TERM 是终端 UDP socket 的唯一使用者：处理终端发来的请求，也负责把 BD / TT 交来的结果和收到的短报文组成 JSON 发给终端。</p>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 530" role="img" aria-label="终端任务主循环：登记看门狗、打开 UDP 链路后循环：喂狗，最多等 20 毫秒收一个包；收到就由 handle_json 取公共字段、缺 ID 时生成 UUID、校时并按 msg_type 分发；然后把 TERM 队列取空，发送结果原样带回请求的 ID 回复，收到的短报文生成两个 UUID 后上报。">
+        <defs>
+          <marker id="f2a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="n-pill" x="60" y="20" width="320" height="34" rx="17"/>
+        <text class="lb" x="220" y="42" text-anchor="middle">TERM 开始（网络就绪后由 START 创建）</text>
+        <rect class="n" x="60" y="74" width="320" height="44" rx="6"/>
+        <text class="t" x="220" y="92" text-anchor="middle">wdg_register("TERM") + udp_link_open()</text>
+        <text class="s" x="220" y="109" text-anchor="middle">本机 4220 ↔ 终端 IP:5000；失败每 1 s 重试</text>
+        <rect class="n" x="60" y="150" width="320" height="34" rx="6"/>
+        <text class="lb" x="220" y="172" text-anchor="middle">wdg_feed()：报平安</text>
+        <rect class="n" x="60" y="204" width="320" height="44" rx="6"/>
+        <text class="t" x="220" y="222" text-anchor="middle">udp_link_recv()</text>
+        <text class="s" x="220" y="239" text-anchor="middle">最多等 20 ms；不是终端 IP 的包丢弃</text>
+        <polygon class="n-dec" points="130,296 220,268 310,296 220,324"/>
+        <text class="lb" x="220" y="300" text-anchor="middle">收到 JSON？</text>
+        <rect class="n-task" x="60" y="354" width="320" height="44" rx="6"/>
+        <text class="t" x="220" y="372" text-anchor="middle">handle_json()</text>
+        <text class="s" x="220" y="389" text-anchor="middle">缺 msg_id / taskid 就生成 UUID；校时；分发 →</text>
+        <rect class="n-q" x="60" y="430" width="320" height="44" rx="6"/>
+        <text class="t" x="220" y="448" text-anchor="middle">xQueueReceive(TERM 队列, 0) 取空</text>
+        <text class="s" x="220" y="465" text-anchor="middle">每条交给 handle_device_msg() →</text>
+        <line class="e" x1="220" y1="54"  x2="220" y2="74"  marker-end="url(#f2a)"/>
+        <line class="e" x1="220" y1="118" x2="220" y2="150" marker-end="url(#f2a)"/>
+        <line class="e" x1="220" y1="184" x2="220" y2="204" marker-end="url(#f2a)"/>
+        <line class="e" x1="220" y1="248" x2="220" y2="268" marker-end="url(#f2a)"/>
+        <line class="e" x1="220" y1="324" x2="220" y2="354" marker-end="url(#f2a)"/>
+        <text class="al" x="228" y="343">是</text>
+        <line class="e" x1="220" y1="398" x2="220" y2="430" marker-end="url(#f2a)"/>
+        <polyline class="e" points="310,296 350,296 350,430" marker-end="url(#f2a)"/>
+        <text class="al" x="330" y="289" text-anchor="middle">否</text>
+        <polyline class="e" points="60,452 30,452 30,167 60,167" marker-end="url(#f2a)"/>
+        <text class="al" x="36" y="310">下一圈</text>
+
+        <!-- 分发表 -->
+        <text class="t" x="700" y="140" text-anchor="middle">handle_json() 按 msg_type 分发</text>
+        <rect class="n" x="430" y="150" width="540" height="34" rx="6"/>
+        <text class="t" x="442" y="172">42201 心跳</text>
+        <text class="lb" x="614" y="172">reply_heartbeat()：dev_status 快照 → 回 42202</text>
+        <rect class="n" x="430" y="190" width="540" height="34" rx="6"/>
+        <text class="t" x="442" y="212">42212 北斗文本</text>
+        <text class="lb" x="614" y="212">forward_text() → bd_submit()；失败立即回 42213</text>
+        <rect class="n" x="430" y="230" width="540" height="34" rx="6"/>
+        <text class="t" x="442" y="252">42208 天通文本</text>
+        <text class="lb" x="614" y="252">tt_submit() 固定 false → 立即回 42209 失败</text>
+        <rect class="n" x="430" y="270" width="540" height="34" rx="6"/>
+        <text class="t" x="442" y="292">42211/15/19/25</text>
+        <text class="lb" x="614" y="292">终端对本机上报的确认：只打日志</text>
+        <rect class="n" x="430" y="310" width="540" height="34" rx="6"/>
+        <text class="t" x="442" y="332">42204/06/16/20/22/26</text>
+        <text class="lb" x="614" y="332">不支持：回 type + 1、status = 1、not supported</text>
+        <polyline class="e" points="380,376 410,376 410,247 430,247" marker-end="url(#f2a)"/>
+
+        <!-- 设备消息 -->
+        <text class="t" x="700" y="400" text-anchor="middle">handle_device_msg()（设备任务经 term_post() 交来）</text>
+        <rect class="n" x="430" y="410" width="540" height="44" rx="6"/>
+        <text class="t" x="442" y="428">TEXT_RESULT 发送结果 → 42213 / 42209</text>
+        <text class="s" x="442" y="445">reply_status()：msg_id、taskid 原样带回终端请求里的</text>
+        <rect class="n-task" x="430" y="462" width="540" height="44" rx="6"/>
+        <text class="t" x="442" y="480">TEXT_RECV 收到的短报文 → 42214 / 42210（主动上报）</text>
+        <text class="s" x="442" y="497">uuid_generate() 生成 msg_id，再生成 taskid（互相独立）→ msg_begin() / msg_send()</text>
+        <polyline class="e" points="380,452 415,452 415,432 430,432" marker-end="url(#f2a)"/>
+        <polyline class="e" points="415,452 415,484 430,484" marker-end="url(#f2a)"/>
+      </svg>
+      </div>
+      <figcaption>每圈最多阻塞 20 ms，所以设备任务交来的结果最多延迟约 20 ms 就会发给终端。所有报文都按 msg_begin() → json_add_*() → msg_send() 三步组包，timestamp 默认是毫秒（<code>CFG_TERM_TS_MS</code>）。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================== 3 北斗任务 ============================== -->
+  <section id="f3">
+    <h2>3. 北斗任务 BD 主循环</h2>
+    <p class="note">BD 独占北斗串口 USART6。收到的语句只更新数据；发报、读卡、刷新 SQ 都在每圈末尾按时间检查，不依赖收数据的节奏。</p>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 620" role="img" aria-label="北斗任务主循环：登记看门狗、打开北斗串口后循环：喂狗，从串口最多等 20 毫秒取数据，有数据就断句并按语句类型分发给 PWI、GSS、ICP、FKI、TCI 的处理函数；然后依次检查 FKI 超时、取下一条发报请求、定时读卡、每秒刷新 SQ 和 status。">
+        <defs>
+          <marker id="f3a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="n-pill" x="60" y="20" width="340" height="34" rx="17"/>
+        <text class="lb" x="230" y="42" text-anchor="middle">BD 开始（main 创建，不等网络）</text>
+        <rect class="n-drv" x="60" y="74" width="340" height="44" rx="6"/>
+        <text class="t" x="230" y="92" text-anchor="middle">wdg_register("BD") + serial_open(SERIAL_BD)</text>
+        <text class="s" x="230" y="109" text-anchor="middle">USART6 38400 8N1；断线计时 s_rx_at 从现在开始</text>
+        <rect class="n" x="60" y="150" width="340" height="34" rx="6"/>
+        <text class="lb" x="230" y="172" text-anchor="middle">wdg_feed()：报平安</text>
+        <rect class="n-drv" x="60" y="204" width="340" height="44" rx="6"/>
+        <text class="t" x="230" y="222" text-anchor="middle">serial_read(SERIAL_BD, 256, 20 ms)</text>
+        <text class="s" x="230" y="239" text-anchor="middle">从环形缓冲区取数据，没有就等空闲中断</text>
+        <polygon class="n-dec" points="140,296 230,268 320,296 230,324"/>
+        <text class="lb" x="230" y="300" text-anchor="middle">取到数据？</text>
+        <rect class="n-task" x="60" y="354" width="340" height="44" rx="6"/>
+        <text class="t" x="230" y="372" text-anchor="middle">bd_framer_feed() → on_line()</text>
+        <text class="s" x="230" y="389" text-anchor="middle">断句 → bd_parse() 校验 → 记 s_rx_at → 分发 →</text>
+        <rect class="n" x="60" y="430" width="340" height="34" rx="6"/>
+        <text class="lb" x="230" y="452" text-anchor="middle">在途且过截止时刻 → finish_send(1, 超时)</text>
+        <rect class="n" x="60" y="474" width="340" height="34" rx="6"/>
+        <text class="lb" x="230" y="496" text-anchor="middle">没有在途且 BD 队列有请求 → start_send()</text>
+        <rect class="n" x="60" y="518" width="340" height="34" rx="6"/>
+        <text class="lb" x="230" y="540" text-anchor="middle">还没读到卡且到 5 s → query_card()</text>
+        <rect class="n" x="60" y="562" width="340" height="34" rx="6"/>
+        <text class="lb" x="230" y="584" text-anchor="middle">到 1 s → update_signal()</text>
+        <line class="e" x1="230" y1="54"  x2="230" y2="74"  marker-end="url(#f3a)"/>
+        <line class="e" x1="230" y1="118" x2="230" y2="150" marker-end="url(#f3a)"/>
+        <line class="e" x1="230" y1="184" x2="230" y2="204" marker-end="url(#f3a)"/>
+        <line class="e" x1="230" y1="248" x2="230" y2="268" marker-end="url(#f3a)"/>
+        <line class="e" x1="230" y1="324" x2="230" y2="354" marker-end="url(#f3a)"/>
+        <text class="al" x="238" y="343">是</text>
+        <line class="e" x1="230" y1="398" x2="230" y2="430" marker-end="url(#f3a)"/>
+        <line class="e" x1="230" y1="464" x2="230" y2="474" marker-end="url(#f3a)"/>
+        <line class="e" x1="230" y1="508" x2="230" y2="518" marker-end="url(#f3a)"/>
+        <line class="e" x1="230" y1="552" x2="230" y2="562" marker-end="url(#f3a)"/>
+        <polyline class="e" points="320,296 380,296 380,430" marker-end="url(#f3a)"/>
+        <text class="al" x="350" y="289" text-anchor="middle">否</text>
+        <polyline class="e" points="60,579 30,579 30,167 60,167" marker-end="url(#f3a)"/>
+        <text class="al" x="36" y="380">下一圈</text>
+
+        <!-- 语句分发 -->
+        <text class="t" x="715" y="250" text-anchor="middle">on_line() 查 k_handlers[] 分发</text>
+        <rect class="n" x="460" y="262" width="510" height="34" rx="6"/>
+        <text class="t" x="472" y="284">PWI 波束</text>
+        <text class="lb" x="560" y="284">on_pwi()：新体制波束锁定数 → sig_update(s_beams)</text>
+        <rect class="n" x="460" y="300" width="510" height="34" rx="6"/>
+        <text class="t" x="472" y="322">GSS 卫星</text>
+        <text class="lb" x="560" y="322">on_gss()：可用卫星数 → sig_update(s_sats)</text>
+        <rect class="n" x="460" y="338" width="510" height="34" rx="6"/>
+        <text class="t" x="472" y="360">ICP 读卡</text>
+        <text class="lb" x="560" y="360">on_icp()：服务频度、长度等级 → dev_status（CD / maxlength）</text>
+        <rect class="n" x="460" y="376" width="510" height="34" rx="6"/>
+        <text class="t" x="472" y="398">FKI 回执</text>
+        <text class="lb" x="560" y="398">on_fki()：TCQ 的 Y / N → finish_send() → term_post()</text>
+        <rect class="n" x="460" y="414" width="510" height="34" rx="6"/>
+        <text class="t" x="472" y="436">TCI 收报</text>
+        <text class="lb" x="560" y="436">on_tci()：混编解码 → UTF-8 → term_post()</text>
+        <polyline class="e" points="400,376 435,376 435,355 460,355" marker-end="url(#f3a)"/>
+
+        <!-- 发报、刷新说明 -->
+        <rect class="n-task" x="460" y="470" width="510" height="44" rx="6"/>
+        <text class="t" x="472" y="488">start_send()：UTF-8 → GBK → 混编 A4… → $BDTCQ</text>
+        <text class="s" x="472" y="505">serial_write() 交给 DMA 后立即返回；截止时刻 = 发送时间 + 10 s（图 5）</text>
+        <line class="e" x1="400" y1="491" x2="460" y2="491" marker-end="url(#f3a)"/>
+        <rect class="n-task" x="460" y="556" width="510" height="44" rx="6"/>
+        <text class="t" x="472" y="574">update_signal()：先看串口，再合成 SQ</text>
+        <text class="s" x="472" y="591">5 s 没有有效语句 → status 2（异常）；否则 SQ 由 PWI / GSS 合成（图 7）</text>
+        <line class="e" x1="400" y1="579" x2="460" y2="579" marker-end="url(#f3a)"/>
+      </svg>
+      </div>
+      <figcaption>next_icr / next_sq 初值为 0，所以第一圈就发 ICR、刷新 SQ。不在 k_handlers[] 表里的语句（SNR、ZTI 等）直接忽略，但只要校验通过就会刷新 s_rx_at，说明串口和设备都在工作。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================== 4 串口收发 ============================== -->
+  <section id="f4">
+    <h2>4. 串口收发：DMA 循环接收 + 环形缓冲区 / DMA 发送</h2>
+    <p class="note">以北斗为例（天通一样，换成 USART3 / DMA1）。接收不占 CPU，任务晚一点来读也不丢；发送启动后立即返回，任务照常运行。</p>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 440" role="img" aria-label="串口接收：北斗经 RS422 收发器到 USART6，DMA2 数据流1 以循环模式把字节写进 4KB 环形缓冲区，写指针由 DMA 计数器给出，读指针由任务维护；一串数据收完后空闲中断释放信号量唤醒北斗任务读取。串口发送：北斗任务调用 serial_write，等上一包发完后拷进发送缓冲，DMA2 数据流6 经 USART6 发给北斗。">
+        <defs>
+          <marker id="f4a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="f4q" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-q" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <text class="t" x="20" y="24">接收：DMA 循环模式 + 环形缓冲区 + 空闲中断</text>
+        <rect class="n-dev" x="20" y="50" width="120" height="56" rx="6"/>
+        <text class="t" x="80" y="74" text-anchor="middle">北斗</text>
+        <text class="s" x="80" y="92" text-anchor="middle">RS422 差分</text>
+        <rect class="n-drv" x="170" y="50" width="130" height="56" rx="6"/>
+        <text class="t" x="235" y="74" text-anchor="middle">RS422 收发器</text>
+        <text class="s" x="235" y="92" text-anchor="middle">差分 ↔ 3.3V TTL</text>
+        <rect class="n-drv" x="330" y="50" width="140" height="56" rx="6"/>
+        <text class="t" x="400" y="74" text-anchor="middle">USART6 RX</text>
+        <text class="s" x="400" y="92" text-anchor="middle">PC7，38400 8N1</text>
+        <rect class="n-drv" x="500" y="50" width="150" height="56" rx="6"/>
+        <text class="t" x="575" y="74" text-anchor="middle">DMA2 数据流1</text>
+        <text class="s" x="575" y="92" text-anchor="middle">循环模式，不占 CPU</text>
+        <line class="e" x1="140" y1="78" x2="170" y2="78" marker-end="url(#f4a)"/>
+        <line class="e" x1="300" y1="78" x2="330" y2="78" marker-end="url(#f4a)"/>
+        <line class="e" x1="470" y1="78" x2="500" y2="78" marker-end="url(#f4a)"/>
+        <line class="e" x1="650" y1="78" x2="680" y2="78" marker-end="url(#f4a)"/>
+
+        <!-- 环形缓冲区 -->
+        <rect class="cell" x="680" y="58" width="25" height="40"/>
+        <rect class="cell" x="705" y="58" width="25" height="40"/>
+        <rect class="cell" x="730" y="58" width="25" height="40"/>
+        <rect class="cell-u" x="755" y="58" width="25" height="40"/>
+        <rect class="cell-u" x="780" y="58" width="25" height="40"/>
+        <rect class="cell-u" x="805" y="58" width="25" height="40"/>
+        <rect class="cell-u" x="830" y="58" width="25" height="40"/>
+        <rect class="cell-u" x="855" y="58" width="25" height="40"/>
+        <rect class="cell" x="880" y="58" width="25" height="40"/>
+        <rect class="cell" x="905" y="58" width="25" height="40"/>
+        <rect class="cell" x="930" y="58" width="25" height="40"/>
+        <rect class="cell" x="955" y="58" width="25" height="40"/>
+        <text class="s" x="817" y="83" text-anchor="middle">未读</text>
+        <path class="e" d="M975,56 C975,30 690,30 690,54" marker-end="url(#f4a)"/>
+        <text class="s" x="830" y="34" text-anchor="middle">s_bd_rx[4096]：写到末尾自动绕回开头</text>
+        <line class="e-q" x1="767" y1="128" x2="767" y2="102" marker-end="url(#f4q)"/>
+        <text class="al-q" x="762" y="142" text-anchor="end">读指针 tail</text>
+        <line class="e-q" x1="892" y1="128" x2="892" y2="102" marker-end="url(#f4q)"/>
+        <text class="al-q" x="897" y="142" text-anchor="start">写指针 head</text>
+
+        <!-- 空闲中断 -->
+        <rect class="n" x="330" y="170" width="140" height="56" rx="6"/>
+        <text class="t" x="400" y="194" text-anchor="middle">空闲中断</text>
+        <text class="s" x="400" y="212" text-anchor="middle">一串数据收完</text>
+        <rect class="n" x="500" y="170" width="150" height="56" rx="6"/>
+        <text class="t" x="575" y="194" text-anchor="middle">serial_irq()</text>
+        <text class="s" x="575" y="212" text-anchor="middle">读 STAT0 + DATA 清标志</text>
+        <rect class="n-q" x="680" y="170" width="130" height="56" rx="6"/>
+        <text class="t" x="745" y="194" text-anchor="middle">rx_sem 信号量</text>
+        <text class="s" x="745" y="212" text-anchor="middle">GiveFromISR</text>
+        <rect class="n-task" x="840" y="170" width="140" height="56" rx="6"/>
+        <text class="t" x="910" y="194" text-anchor="middle">BD 任务</text>
+        <text class="s" x="910" y="212" text-anchor="middle">serial_read() 被唤醒</text>
+        <line class="e" x1="400" y1="106" x2="400" y2="170" marker-end="url(#f4a)"/>
+        <line class="e" x1="470" y1="198" x2="500" y2="198" marker-end="url(#f4a)"/>
+        <line class="e" x1="650" y1="198" x2="680" y2="198" marker-end="url(#f4a)"/>
+        <line class="e" x1="810" y1="198" x2="840" y2="198" marker-end="url(#f4a)"/>
+        <line class="e" x1="955" y1="150" x2="955" y2="170" marker-end="url(#f4a)"/>
+        <text class="s" x="480" y="160">head = 4096 − DMA 剩余计数；rx_copy() 从 tail 拷到 head（跨末尾分两段）→</text>
+
+        <!-- 发送 -->
+        <text class="t" x="20" y="274">发送：DMA 普通模式，启动后立即返回</text>
+        <rect class="n-task" x="20" y="296" width="150" height="56" rx="6"/>
+        <text class="t" x="95" y="320" text-anchor="middle">BD 任务</text>
+        <text class="s" x="95" y="338" text-anchor="middle">$BDTCQ… 组在 s_tx</text>
+        <rect class="n-drv" x="200" y="296" width="170" height="56" rx="6"/>
+        <text class="t" x="285" y="320" text-anchor="middle">serial_write()</text>
+        <text class="s" x="285" y="338" text-anchor="middle">等上一包发完（≤ 1.5 s）</text>
+        <rect class="n-q" x="400" y="296" width="150" height="56" rx="6"/>
+        <text class="t" x="475" y="320" text-anchor="middle">s_bd_tx[4400]</text>
+        <text class="s" x="475" y="338" text-anchor="middle">memcpy，s_tx 立即可复用</text>
+        <rect class="n-drv" x="580" y="296" width="140" height="56" rx="6"/>
+        <text class="t" x="650" y="320" text-anchor="middle">DMA2 数据流6</text>
+        <text class="s" x="650" y="338" text-anchor="middle">清标志、填长度、使能</text>
+        <rect class="n-drv" x="750" y="296" width="110" height="56" rx="6"/>
+        <text class="t" x="805" y="320" text-anchor="middle">USART6 TX</text>
+        <text class="s" x="805" y="338" text-anchor="middle">PC6</text>
+        <rect class="n-dev" x="880" y="296" width="100" height="56" rx="6"/>
+        <text class="t" x="930" y="320" text-anchor="middle">北斗</text>
+        <text class="s" x="930" y="338" text-anchor="middle">经 RS422</text>
+        <line class="e" x1="170" y1="324" x2="200" y2="324" marker-end="url(#f4a)"/>
+        <line class="e" x1="370" y1="324" x2="400" y2="324" marker-end="url(#f4a)"/>
+        <line class="e" x1="550" y1="324" x2="580" y2="324" marker-end="url(#f4a)"/>
+        <line class="e" x1="720" y1="324" x2="750" y2="324" marker-end="url(#f4a)"/>
+        <line class="e" x1="860" y1="324" x2="880" y2="324" marker-end="url(#f4a)"/>
+        <text class="s" x="20" y="390">发完最后一个字节，硬件自动清掉 DMA 数据流使能位；下一次 serial_write() 就靠这一位判断上一包是否发完。</text>
+        <text class="s" x="20" y="410">38400 下一条 4.1 KB 的 TCQ 约 1.1 s，这期间 BD 任务照常收数据、喂狗；FKI 超时从"发完"开始算。</text>
+      </svg>
+      </div>
+      <figcaption>为什么要环形缓冲：串口字节随时到达，不会等任务；DMA 循环写、任务读，单写单读不用加锁。4 KB 能存 1 秒多的北斗数据，BD 任务每 20 ms 就来取一次。即使数据被覆盖，北斗语句有校验和，坏语句会被丢弃。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================== 5 发送短报文 ============================== -->
+  <section id="f5">
+    <h2>5. 北斗短报文发送：42212 → TCQ → FKI → 42213</h2>
+    <p class="note">同一时间只有一条在途；后面的请求在 BD 队列（深度 2）里等，队列满时终端立即收到失败。</p>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 560" role="img" aria-label="发送时序：终端发 42212 给 TERM，TERM 用 bd_submit 放进 BD 队列；BD 任务 start_send 把正文转 GBK 再混编，组 TCQ 后交给串口 DMA；串口把 TCQ 发给北斗；北斗回 FKI，经串口交给 BD 的 on_fki；BD 用 term_post 把结果交给 TERM，TERM 回 42213。">
+        <defs>
+          <marker id="f5a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="f5q" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-q" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="n-dev"  x="20"  y="20" width="120" height="40" rx="6"/><text class="t" x="80"  y="45" text-anchor="middle">终端</text>
+        <rect class="n-task" x="210" y="20" width="120" height="40" rx="6"/><text class="t" x="270" y="45" text-anchor="middle">TERM</text>
+        <rect class="n-task" x="410" y="20" width="120" height="40" rx="6"/><text class="t" x="470" y="45" text-anchor="middle">BD</text>
+        <rect class="n-drv"  x="600" y="20" width="140" height="40" rx="6"/><text class="t" x="670" y="45" text-anchor="middle">USART6 + DMA</text>
+        <rect class="n-dev"  x="820" y="20" width="120" height="40" rx="6"/><text class="t" x="880" y="45" text-anchor="middle">北斗</text>
+        <line class="life" x1="80"  y1="60" x2="80"  y2="545"/>
+        <line class="life" x1="270" y1="60" x2="270" y2="545"/>
+        <line class="life" x1="470" y1="60" x2="470" y2="545"/>
+        <line class="life" x1="670" y1="60" x2="670" y2="545"/>
+        <line class="life" x1="880" y1="60" x2="880" y2="545"/>
+
+        <line class="e" x1="80" y1="90" x2="270" y2="90" marker-end="url(#f5a)"/>
+        <text class="al" x="175" y="83" text-anchor="middle">42212 {taskid, target_id, msg}</text>
+        <rect class="n" x="172" y="104" width="196" height="30" rx="5"/>
+        <text class="s" x="270" y="124" text-anchor="middle">forward_text()：取号码、正文</text>
+        <line class="e-q" x1="270" y1="160" x2="470" y2="160" marker-end="url(#f5q)"/>
+        <text class="al-q" x="370" y="153" text-anchor="middle">bd_submit()：BD 队列，不等待</text>
+        <rect class="n-task" x="380" y="176" width="180" height="62" rx="6"/>
+        <text class="t" x="470" y="196" text-anchor="middle">start_send()</text>
+        <text class="s" x="470" y="213" text-anchor="middle">UTF-8 → GBK → 混编 A4…</text>
+        <text class="s" x="470" y="229" text-anchor="middle">taskstate 进度 0 → 50</text>
+        <line class="e" x1="470" y1="262" x2="670" y2="262" marker-end="url(#f5a)"/>
+        <text class="al" x="570" y="255" text-anchor="middle">serial_write()：拷贝后立即返回</text>
+        <line class="e" x1="670" y1="298" x2="880" y2="298" marker-end="url(#f5a)"/>
+        <text class="al" x="775" y="284" text-anchor="middle">$BDTCQ,4217580,2,2,3,A4…,0*hh</text>
+        <text class="s" x="775" y="314" text-anchor="middle">4 KB 约 1.1 s</text>
+        <line class="e" x1="880" y1="350" x2="670" y2="350" marker-end="url(#f5a)"/>
+        <text class="al" x="775" y="343" text-anchor="middle">$BDFKI,032025,TCQ,Y,0,0*77</text>
+        <line class="e" x1="670" y1="386" x2="470" y2="386" marker-end="url(#f5a)"/>
+        <text class="al" x="570" y="379" text-anchor="middle">空闲中断 → serial_read() → on_fki()</text>
+        <rect class="n-task" x="380" y="400" width="180" height="44" rx="6"/>
+        <text class="t" x="470" y="418" text-anchor="middle">finish_send(0, "")</text>
+        <text class="s" x="470" y="435" text-anchor="middle">清在途、清 taskstate</text>
+        <line class="e-q" x1="470" y1="470" x2="270" y2="470" marker-end="url(#f5q)"/>
+        <text class="al-q" x="370" y="463" text-anchor="middle">term_post(TEXT_RESULT)：TERM 队列</text>
+        <line class="e" x1="270" y1="515" x2="80" y2="515" marker-end="url(#f5a)"/>
+        <text class="al" x="175" y="508" text-anchor="middle">42213 {taskid 原样, status 0}</text>
+      </svg>
+      </div>
+      <figcaption>失败路径：号码不是纯数字、正文为空、太长、串口 1.5 s 内不空闲 → start_send() 里直接 finish_send(1)；FKI 为 N → <code>BD send too frequent, wait Ns</code> 或 <code>BD rejected, FKI reason x, y</code>；发送时间 + 10 s 还没有 FKI → <code>BD no response (FKI timeout)</code>。都会回 42213 status 1。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================== 6 接收短报文 ============================== -->
+  <section id="f6">
+    <h2>6. 北斗短报文接收：TCI → 42214</h2>
+    <p class="note">北斗任务只负责解码，JSON 由终端任务组；主动上报的 msg_id、taskid 是两个独立生成的标准 UUID。</p>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 470" role="img" aria-label="接收时序：北斗经串口发出 TCI，DMA 写进环形缓冲区并触发空闲中断；BD 任务读出后断句，on_tci 把混编数据还原成 GBK 再转 UTF-8，用 term_post 交给 TERM；TERM 生成两个 UUID 作为 msg_id 和 taskid，组 42214 发给终端，终端回 42215，本机只打日志。">
+        <defs>
+          <marker id="f6a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="f6q" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-q" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="n-dev"  x="60"  y="20" width="120" height="40" rx="6"/><text class="t" x="120" y="45" text-anchor="middle">北斗</text>
+        <rect class="n-drv"  x="250" y="20" width="140" height="40" rx="6"/><text class="t" x="320" y="45" text-anchor="middle">USART6 + DMA</text>
+        <rect class="n-task" x="460" y="20" width="120" height="40" rx="6"/><text class="t" x="520" y="45" text-anchor="middle">BD</text>
+        <rect class="n-task" x="660" y="20" width="120" height="40" rx="6"/><text class="t" x="720" y="45" text-anchor="middle">TERM</text>
+        <rect class="n-dev"  x="850" y="20" width="120" height="40" rx="6"/><text class="t" x="910" y="45" text-anchor="middle">终端</text>
+        <line class="life" x1="120" y1="60" x2="120" y2="455"/>
+        <line class="life" x1="320" y1="60" x2="320" y2="455"/>
+        <line class="life" x1="520" y1="60" x2="520" y2="455"/>
+        <line class="life" x1="720" y1="60" x2="720" y2="455"/>
+        <line class="life" x1="910" y1="60" x2="910" y2="455"/>
+
+        <line class="e" x1="120" y1="90" x2="320" y2="90" marker-end="url(#f6a)"/>
+        <text class="al" x="220" y="83" text-anchor="middle">$BDTCI,4217580,…,3,0,A431…*hh</text>
+        <rect class="n-q" x="245" y="104" width="150" height="30" rx="5"/>
+        <text class="s" x="320" y="124" text-anchor="middle">进环形缓冲 → 空闲中断</text>
+        <line class="e" x1="320" y1="160" x2="520" y2="160" marker-end="url(#f6a)"/>
+        <text class="al" x="420" y="153" text-anchor="middle">serial_read() → bd_framer_feed()</text>
+        <rect class="n-task" x="405" y="176" width="230" height="78" rx="6"/>
+        <text class="t" x="520" y="196" text-anchor="middle">on_tci()</text>
+        <text class="s" x="520" y="213" text-anchor="middle">bd_mixed_decode()：A4… → GBK</text>
+        <text class="s" x="520" y="229" text-anchor="middle">gbk_to_utf8()：→ "12一二"</text>
+        <text class="s" x="520" y="245" text-anchor="middle">peer = 发信方 4217580</text>
+        <line class="e-q" x1="520" y1="280" x2="720" y2="280" marker-end="url(#f6q)"/>
+        <text class="al-q" x="620" y="273" text-anchor="middle">term_post(TEXT_RECV)</text>
+        <rect class="n-task" x="630" y="296" width="180" height="62" rx="6"/>
+        <text class="t" x="720" y="316" text-anchor="middle">handle_device_msg()</text>
+        <text class="s" x="720" y="333" text-anchor="middle">uuid_generate() → msg_id</text>
+        <text class="s" x="720" y="349" text-anchor="middle">uuid_generate() → taskid</text>
+        <line class="e" x1="720" y1="388" x2="910" y2="388" marker-end="url(#f6a)"/>
+        <text class="al" x="815" y="381" text-anchor="middle">42214 {taskid, target_id, msg}</text>
+        <line class="e" x1="910" y1="430" x2="720" y2="430" marker-end="url(#f6a)"/>
+        <text class="al" x="815" y="423" text-anchor="middle">42215 确认 → 只打日志</text>
+      </svg>
+      </div>
+      <figcaption>编码类型 3（混编）去掉 "A4" 按十六进制还原 GBK；编码类型 1 / 2 或混编格式不对时，数据本身当作 GBK / ASCII 文本。TERM 队列满（等 100 ms 仍放不进）时这条短报文丢失，BD 打日志。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================== 7 SQ / status ============================== -->
+  <section id="f7">
+    <h2>7. SQ / status 计算（每 1 s）</h2>
+    <p class="note">update_signal() 先看串口有没有数据，再由 PWI 波束数和 GSS 卫星数合成 SQ。结果写进 dev_status，心跳 42202 直接取用。</p>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 400" role="img" aria-label="SQ 和 status 计算：串口 5 秒内没有有效语句则 status 为 2、SQ 为 0；否则把波束数和卫星数各自折算成 0 到 4 级（过期为无数据），两路都有取平均四舍五入，只有一路用这一路，都没有为 0；status 由 SQ 是否大于 0 决定在线或离线，结果加锁写进 dev_status。">
+        <defs>
+          <marker id="f7a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="f7b" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-bad" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="n-q" x="20" y="40" width="240" height="56" rx="6"/>
+        <text class="t" x="140" y="64" text-anchor="middle">s_rx_at</text>
+        <text class="s" x="140" y="82" text-anchor="middle">最近一次收到有效语句（任何类型）</text>
+        <rect class="n-q" x="20" y="150" width="240" height="56" rx="6"/>
+        <text class="t" x="140" y="174" text-anchor="middle">s_beams</text>
+        <text class="s" x="140" y="192" text-anchor="middle">PWI 新体制波束锁定数 + 收到时刻</text>
+        <rect class="n-q" x="20" y="250" width="240" height="56" rx="6"/>
+        <text class="t" x="140" y="274" text-anchor="middle">s_sats</text>
+        <text class="s" x="140" y="292" text-anchor="middle">GSS 可用卫星数 + 收到时刻</text>
+
+        <polygon class="n-dec" points="310,68 420,36 530,68 420,100"/>
+        <text class="lb" x="420" y="72" text-anchor="middle">串口 5 s 内有语句？</text>
+        <rect class="n-bad" x="580" y="48" width="220" height="40" rx="6"/>
+        <text class="lb" x="690" y="73" text-anchor="middle">status = 2（异常），SQ = 0</text>
+        <rect class="n" x="320" y="150" width="200" height="56" rx="6"/>
+        <text class="t" x="420" y="174" text-anchor="middle">sig_level(s_beams)</text>
+        <text class="s" x="420" y="192" text-anchor="middle">过期 → −1，否则 min(n, 4)</text>
+        <rect class="n" x="320" y="250" width="200" height="56" rx="6"/>
+        <text class="t" x="420" y="274" text-anchor="middle">sig_level(s_sats)</text>
+        <text class="s" x="420" y="292" text-anchor="middle">过期 → −1，否则 min(n, 4)</text>
+        <rect class="n" x="580" y="170" width="220" height="74" rx="6"/>
+        <text class="t" x="690" y="192" text-anchor="middle">合成 SQ</text>
+        <text class="s" x="690" y="210" text-anchor="middle">两路都有：(a + b + 1) / 2</text>
+        <text class="s" x="690" y="227" text-anchor="middle">只有一路用这一路；都没有为 0</text>
+        <rect class="n" x="580" y="290" width="220" height="44" rx="6"/>
+        <text class="t" x="690" y="308" text-anchor="middle">status = SQ &gt; 0 ? 0 : 1</text>
+        <text class="s" x="690" y="325" text-anchor="middle">0 在线，1 离线</text>
+        <rect class="n-q" x="840" y="170" width="140" height="70" rx="6"/>
+        <text class="t" x="910" y="194" text-anchor="middle">dev_status</text>
+        <text class="s" x="910" y="212" text-anchor="middle">bd.sq / bd.status</text>
+        <text class="s" x="910" y="228" text-anchor="middle">加锁写入</text>
+        <rect class="n-task" x="840" y="290" width="140" height="44" rx="6"/>
+        <text class="t" x="910" y="308" text-anchor="middle">心跳 42202</text>
+        <text class="s" x="910" y="325" text-anchor="middle">BD.SQ / BD.status</text>
+
+        <line class="e" x1="260" y1="68" x2="310" y2="68" marker-end="url(#f7a)"/>
+        <line class="e-bad" x1="530" y1="68" x2="580" y2="68" marker-end="url(#f7b)"/>
+        <text class="al-bad" x="555" y="61" text-anchor="middle">否</text>
+        <polyline class="e" points="420,100 420,125 690,125 690,170" marker-end="url(#f7a)"/>
+        <text class="al" x="428" y="118">是</text>
+        <line class="e" x1="260" y1="178" x2="320" y2="178" marker-end="url(#f7a)"/>
+        <line class="e" x1="260" y1="278" x2="320" y2="278" marker-end="url(#f7a)"/>
+        <line class="e" x1="520" y1="178" x2="580" y2="200" marker-end="url(#f7a)"/>
+        <line class="e" x1="520" y1="278" x2="580" y2="226" marker-end="url(#f7a)"/>
+        <line class="e" x1="690" y1="244" x2="690" y2="290" marker-end="url(#f7a)"/>
+        <polyline class="e" points="800,312 820,312 820,215 840,215" marker-end="url(#f7a)"/>
+        <polyline class="e-bad" points="800,68 910,68 910,170" marker-end="url(#f7b)"/>
+        <line class="e" x1="910" y1="240" x2="910" y2="290" marker-end="url(#f7a)"/>
+      </svg>
+      </div>
+      <figcaption>例：波束 3、卫星 6 → (3 + 4 + 1) / 2 = 4；只有波束 3（区域模块没有 GSS）→ 3；两路都超过 5 s 没更新 → 0，离线；串口线拔了 → 异常。上电后 s_rx_at 从任务启动时刻算起，前 5 s 按离线处理，给设备开机留时间。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================== 8 天通任务 ============================== -->
+  <section id="f8">
+    <h2>8. 天通任务 TT 主循环</h2>
+    <p class="note">天通协议还没到。串口（RS232，USART3）、任务、看门狗、和终端之间的通道都已就绪，收到的数据按行打印在调试串口上。</p>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 340" role="img" aria-label="天通任务：登记看门狗、打开天通串口后循环：喂狗，最多等 100 毫秒取串口数据，按回车换行切成行后打日志。终端发来的天通文本请求由 tt_submit 处理，目前固定返回 false，终端立即收到失败。">
+        <defs>
+          <marker id="f8a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="n-pill" x="60" y="20" width="340" height="34" rx="17"/>
+        <text class="lb" x="230" y="42" text-anchor="middle">TT 开始（main 创建，不等网络）</text>
+        <rect class="n-drv" x="60" y="74" width="340" height="44" rx="6"/>
+        <text class="t" x="230" y="92" text-anchor="middle">wdg_register("TT") + serial_open(SERIAL_TT)</text>
+        <text class="s" x="230" y="109" text-anchor="middle">USART3 115200 8N1（RS232）</text>
+        <rect class="n" x="60" y="150" width="340" height="34" rx="6"/>
+        <text class="lb" x="230" y="172" text-anchor="middle">wdg_feed()：报平安</text>
+        <rect class="n-drv" x="60" y="204" width="340" height="44" rx="6"/>
+        <text class="t" x="230" y="222" text-anchor="middle">serial_read(SERIAL_TT, 128, 100 ms)</text>
+        <text class="s" x="230" y="239" text-anchor="middle">没有数据最多等 100 ms</text>
+        <rect class="n-task" x="60" y="270" width="340" height="44" rx="6"/>
+        <text class="t" x="230" y="288" text-anchor="middle">feed() → on_line()</text>
+        <text class="s" x="230" y="305" text-anchor="middle">遇到 \r / \n 交出一行 → LOG("TT: rx …")</text>
+        <line class="e" x1="230" y1="54"  x2="230" y2="74"  marker-end="url(#f8a)"/>
+        <line class="e" x1="230" y1="118" x2="230" y2="150" marker-end="url(#f8a)"/>
+        <line class="e" x1="230" y1="184" x2="230" y2="204" marker-end="url(#f8a)"/>
+        <line class="e" x1="230" y1="248" x2="230" y2="270" marker-end="url(#f8a)"/>
+        <polyline class="e" points="60,292 30,292 30,167 60,167" marker-end="url(#f8a)"/>
+
+        <rect class="n-task" x="460" y="74" width="510" height="56" rx="6"/>
+        <text class="t" x="472" y="96">tt_submit()（TERM 任务调用）</text>
+        <text class="s" x="472" y="116">协议未到，固定返回 false → TERM 立即回 42209 status 1</text>
+        <rect class="n" x="460" y="150" width="510" height="96" rx="6"/>
+        <text class="t" x="472" y="172">协议到位后要补的（tt_task.c）</text>
+        <text class="s" x="472" y="192">1. on_line() 按行解析：信号质量、入网状态 → dev_status.tt</text>
+        <text class="s" x="472" y="210">2. tt_submit() 改成入队，由 TT 任务 serial_write(SERIAL_TT, …) 发送</text>
+        <text class="s" x="472" y="228">3. 结果 / 收到的短信 → term_post(DEV_TT) → TERM 组 JSON 回 42209 / 上报 42210</text>
+      </svg>
+      </div>
+      <figcaption>TERM 组 42210 时同样用 uuid_generate() 生成 msg_id、taskid，天通接入后不用改终端这边的代码。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================== 9 看门狗 ============================== -->
+  <section id="f9">
+    <h2>9. 看门狗</h2>
+    <p class="note">两级：业务任务向 WDG 任务报平安，WDG 任务确认大家都活着才喂硬件狗 IWDG。</p>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 380" role="img" aria-label="看门狗：TERM、BD、TT 每圈调用 wdg_feed 记录时刻；WDG 任务每 500 毫秒检查，全部在 3 秒内报过就喂硬件狗，否则打印卡住的任务名并停止喂狗，约 4 秒后 IWDG 溢出复位。">
+        <defs>
+          <marker id="f9a" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          <marker id="f9b" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-bad" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+        <rect class="n-task" x="20" y="40" width="200" height="50" rx="6"/>
+        <text class="t" x="120" y="62" text-anchor="middle">TERM</text>
+        <text class="s" x="120" y="80" text-anchor="middle">每圈（≤ 20 ms）wdg_feed()</text>
+        <rect class="n-task" x="20" y="110" width="200" height="50" rx="6"/>
+        <text class="t" x="120" y="132" text-anchor="middle">BD</text>
+        <text class="s" x="120" y="150" text-anchor="middle">每圈（≤ 20 ms）wdg_feed()</text>
+        <rect class="n-task" x="20" y="180" width="200" height="50" rx="6"/>
+        <text class="t" x="120" y="202" text-anchor="middle">TT</text>
+        <text class="s" x="120" y="220" text-anchor="middle">每圈（≤ 100 ms）wdg_feed()</text>
+        <rect class="n-q" x="290" y="105" width="200" height="60" rx="6"/>
+        <text class="t" x="390" y="130" text-anchor="middle">s_tasks[].last</text>
+        <text class="s" x="390" y="148" text-anchor="middle">各任务最近报平安的 tick</text>
+        <line class="e" x1="220" y1="65"  x2="290" y2="125" marker-end="url(#f9a)"/>
+        <line class="e" x1="220" y1="135" x2="290" y2="135" marker-end="url(#f9a)"/>
+        <line class="e" x1="220" y1="205" x2="290" y2="145" marker-end="url(#f9a)"/>
+
+        <rect class="n-task" x="580" y="30" width="200" height="50" rx="6"/>
+        <text class="t" x="680" y="52" text-anchor="middle">WDG 任务（优先级 1）</text>
+        <text class="s" x="680" y="70" text-anchor="middle">每 500 ms 检查一遍</text>
+        <polygon class="n-dec" points="590,160 680,128 770,160 680,192"/>
+        <text class="lb" x="680" y="164" text-anchor="middle">都在 3 s 内报过？</text>
+        <rect class="n" x="820" y="143" width="160" height="34" rx="6"/>
+        <text class="lb" x="900" y="165" text-anchor="middle">IWDG_ReloadCounter()</text>
+        <rect class="n-bad" x="580" y="230" width="200" height="50" rx="6"/>
+        <text class="t" x="680" y="252" text-anchor="middle">打印卡住的任务名</text>
+        <text class="s" x="680" y="270" text-anchor="middle">停止喂狗</text>
+        <rect class="n-bad" x="580" y="310" width="200" height="50" rx="6"/>
+        <text class="t" x="680" y="332" text-anchor="middle">约 4 s 后 IWDG 溢出复位</text>
+        <text class="s" x="680" y="350" text-anchor="middle">开机日志：reset by watchdog</text>
+        <line class="e" x1="680" y1="80" x2="680" y2="128" marker-end="url(#f9a)"/>
+        <polyline class="e" points="490,135 550,135 550,160 590,160" marker-end="url(#f9a)"/>
+        <text class="al" x="520" y="128" text-anchor="middle">读取</text>
+        <line class="e" x1="770" y1="160" x2="820" y2="160" marker-end="url(#f9a)"/>
+        <text class="al" x="795" y="153" text-anchor="middle">是</text>
+        <polyline class="e" points="900,143 900,55 780,55" marker-end="url(#f9a)"/>
+        <text class="al" x="906" y="100">500 ms 后</text>
+        <line class="e-bad" x1="680" y1="192" x2="680" y2="230" marker-end="url(#f9b)"/>
+        <text class="al-bad" x="688" y="215">否</text>
+        <line class="e-bad" x1="680" y1="280" x2="680" y2="310" marker-end="url(#f9b)"/>
+      </svg>
+      </div>
+      <figcaption>WDG 优先级设成最低是有意的：某个高优先级任务死循环占满 CPU 时，WDG 得不到运行，同样停止喂狗而复位。串口发送最多等 1.5 s（小于 3 s），不会误触发。栈溢出、堆不够由 FreeRTOS 钩子直接软件复位。</figcaption>
+    </figure>
+  </section>
+</main>
+</body>
+</html>

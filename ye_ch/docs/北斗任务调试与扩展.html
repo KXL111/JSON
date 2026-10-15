@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>北斗任务调试与扩展</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --fg: #1d2129; --muted: #5f6772; --line: #d6d3ca;
+    --blue: #2f5bd3; --blue-soft: #e9effd;
+    --green: #12805c; --green-soft: #e4f4ec;
+    --amber: #b25e09; --amber-soft: #fcf0de;
+    --violet: #6f42c1; --violet-soft: #f0e9fb;
+    --slate: #556070; --slate-soft: #eceef2;
+    --red: #c4302b; --red-soft: #fbeae9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141619; --surface: #1c1f25; --fg: #e6e8eb; --muted: #9ba4ae; --line: #363b44;
+      --blue: #8eabff; --blue-soft: #1d2a48;
+      --green: #62d1a5; --green-soft: #15322a;
+      --amber: #f0a95c; --amber-soft: #392916;
+      --violet: #baa0ff; --violet-soft: #2b2341;
+      --slate: #a9b2bf; --slate-soft: #262a31;
+      --red: #ff7d74; --red-soft: #3c1d1c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141619; --surface: #1c1f25; --fg: #e6e8eb; --muted: #9ba4ae; --line: #363b44;
+    --blue: #8eabff; --blue-soft: #1d2a48;
+    --green: #62d1a5; --green-soft: #15322a;
+    --amber: #f0a95c; --amber-soft: #392916;
+    --violet: #baa0ff; --violet-soft: #2b2341;
+    --slate: #a9b2bf; --slate-soft: #262a31;
+    --red: #ff7d74; --red-soft: #3c1d1c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body { font: 15px/1.7 "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 0 0 4px; }
+  h3 { font-size: 16px; margin: 26px 0 4px; }
+  h4 { font-size: 15px; margin: 18px 0 2px; color: var(--muted); }
+  p { margin: 8px 0; }
+  a { color: var(--blue); }
+  .lead { color: var(--muted); margin: 0 0 14px; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; }
+  nav a { color: var(--fg); text-decoration: none; border: 1px solid var(--line); background: var(--surface);
+          border-radius: 999px; padding: 2px 12px; font-size: 13.5px; }
+  nav a:hover { border-color: var(--blue); color: var(--blue); }
+  nav a.other { border-color: var(--blue); color: var(--blue); }
+  section { margin-top: 44px; }
+  .note { color: var(--muted); margin: 0; font-size: 14px; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.92em; overflow-wrap: anywhere; }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin-top: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  td.nowrap { white-space: nowrap; }
+  td code, th code { white-space: nowrap; }
+  td.wrap code { white-space: normal; }
+
+  ol.steps { margin: 10px 0 0; padding-left: 1.7em; }
+  ol.steps li { margin: 7px 0; padding-left: 2px; }
+  ul.tight { margin: 8px 0 0; padding-left: 1.4em; }
+  ul.tight li { margin: 4px 0; }
+  .callout { margin: 14px 0 0; padding: 10px 14px; border-left: 3px solid var(--blue); background: var(--blue-soft);
+             border-radius: 0 8px 8px 0; font-size: 14px; }
+  .callout.warn { border-left-color: var(--amber); background: var(--amber-soft); }
+  .callout.new { border-left-color: var(--violet); background: var(--violet-soft); }
+  .callout.ok { border-left-color: var(--green); background: var(--green-soft); }
+  .callout.bad { border-left-color: var(--red); background: var(--red-soft); }
+
+  .codebox { position: relative; margin: 12px 0 0; }
+  pre.code { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+             padding: 12px 14px; margin: 0; font: 13px/1.6 Consolas, "Cascadia Mono", "Microsoft YaHei", monospace; }
+  pre.code .add { display: inline-block; min-width: 100%; background: var(--green-soft); color: var(--green); }
+  pre.code .del { display: inline-block; min-width: 100%; background: var(--red-soft); color: var(--red); }
+  table.quick td:nth-child(2) { white-space: nowrap; }
+  .copy { position: absolute; top: 6px; right: 8px; font: 12px/18px "Microsoft YaHei", system-ui, sans-serif; color: var(--muted);
+          background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+  .copy:hover { color: var(--blue); border-color: var(--blue); }
+  .file { display: inline-block; margin: 14px 0 0; font: 600 12.5px/20px Consolas, "Cascadia Mono", monospace; color: var(--slate);
+          background: var(--slate-soft); border: 1px solid var(--line); border-radius: 6px 6px 0 0; padding: 0 9px; }
+  .file + .codebox { margin-top: 0; }
+  .file + .codebox pre.code { border-top-left-radius: 0; }
+
+  .tag { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 10px; border: 1px solid var(--line); white-space: nowrap; }
+  .tag.a { color: var(--green); background: var(--green-soft); }
+  .tag.b { color: var(--violet); background: var(--violet-soft); }
+  .tag.c { color: var(--blue); background: var(--blue-soft); }
+  .tag.d { color: var(--amber); background: var(--amber-soft); }
+  .lbl { color: var(--muted); font-size: 13px; margin: 14px 0 0; font-weight: 600; letter-spacing: .02em; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>北斗任务调试与扩展</h1>
+    <p class="lead">北斗（BD）任务从上电到收发短报文的<strong>完整流程</strong>，联调时<strong>怎么调试</strong>，以后要<strong>新增北斗指令</strong>或<strong>修改行为</strong>该改哪几处、怎么改。代码行号以 <code>ye_ch/Projects/CommGateway</code> 为准（<code>no_ch</code> 是同一份代码去掉注释，逻辑一致，第 9 节有比对工具）。协议字段取自 <code>3.md</code>（HTQ206S 说明书）、<code>design.txt</code>、<code>README.md</code>。</p>
+    <nav>
+      <a href="#s0">0 速查</a>
+      <a href="#s1">1 流程详解</a>
+      <a href="#s2">2 调试环境</a>
+      <a href="#s3">3 调试手段</a>
+      <a href="#s4">4 测试用例</a>
+      <a href="#s5">5 故障对照</a>
+      <a href="#s6">6 新增指令</a>
+      <a href="#s7">7 常见修改</a>
+      <a href="#s8">8 已知问题修法</a>
+      <a href="#s9">9 改完之后</a>
+      <a href="#sa">附录 工具脚本</a>
+      <a class="other" href="北斗任务流程详解.html">北斗任务流程详解 →</a>
+      <a class="other" href="北斗协议语句详解.html">北斗协议语句详解 →</a>
+      <a class="other" href="运作流程详解.html">运作流程详解 →</a>
+    </nav>
+  </header>
+
+  <!-- ============================== 0 速查 ============================== -->
+  <section id="s0">
+    <h2>0 速查：我想……</h2>
+    <div class="tablewrap">
+      <table class="quick">
+        <thead><tr><th>我想</th><th>去哪</th><th>改哪里</th></tr></thead>
+        <tbody>
+          <tr><td>看懂北斗任务每一步在干什么</td><td><a href="#s1">第 1 节</a></td><td>—</td></tr>
+          <tr><td>没有北斗模块也能把整条链路跑通</td><td><a href="#s2">第 2 节</a> + <a href="#sa">附录</a></td><td>PC 上跑 <code>bd_sim.py</code> + <code>term_sim.py</code></td></tr>
+          <tr><td>看收发的原文、解析结果</td><td><a href="#s3-1">3.1</a></td><td><code>app_config.h</code> 的 <code>CFG_LOG_BD_*</code></td></tr>
+          <tr><td>手工往本机发一条北斗语句</td><td><a href="#s3-2">3.2</a></td><td>算好校验和，SSCOM 发送</td></tr>
+          <tr><td>逐条验证功能</td><td><a href="#s4">第 4 节</a></td><td>—</td></tr>
+          <tr><td>日志里出现某条报错，查原因</td><td><a href="#s5">第 5 节</a></td><td>—</td></tr>
+          <tr><td>解析一条新的模块输出语句（只收）</td><td><a href="#s6-3">6.3</a></td><td><code>bd_task.c</code>：写 <code>on_xxx()</code>，加进 <code>k_handlers[]</code></td></tr>
+          <tr><td>本机主动发一条要发射的指令（OFQ / EPQ / QRQ…）</td><td><a href="#s6-4">6.4</a></td><td><code>bd_task.c</code>：<code>s_pending</code> 加指令名，主循环调度</td></tr>
+          <tr><td>让终端能触发一条新指令</td><td><a href="#s6-5">6.5</a></td><td><code>msg_types.h</code>、<code>app_msg.h</code>、<code>term_task.c</code>、<code>bd_task.c</code></td></tr>
+          <tr><td>改波特率、频点、超时</td><td><a href="#s7-1">7.1</a></td><td><code>app_config.h</code></td></tr>
+          <tr><td>改 CD / maxlength 的上报口径、SQ 算法、FKI 原因</td><td><a href="#s7">第 7 节</a></td><td><code>on_icp()</code>、<code>sig_level()</code>、<code>on_fki()</code></td></tr>
+          <tr><td>修读代码时发现的问题</td><td><a href="#s8">第 8 节</a></td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================== 1 流程详解 ============================== -->
+  <section id="s1">
+    <h2>1 流程详解</h2>
+
+    <h3 id="s1-1">1.1 BD 任务在系统里的位置</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>项</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td>入口</td><td><code>bd_task()</code>，<code>bd_task.c:748</code></td></tr>
+          <tr><td>优先级 / 栈</td><td>4 / 1024 字（4 KB）；<code>main.c:124</code> 上电直接创建，<strong>不等网络</strong></td></tr>
+          <tr><td>独占串口</td><td>USART6：PC6 发 / PC7 收（AF8），38400 8N1，外接 TTL 转 RS422 模块</td></tr>
+          <tr><td>DMA</td><td>接收 DMA2 数据流1 通道5（循环模式，4096 B 环形缓冲）；发送 DMA2 数据流6 通道5（普通模式，4400 B 发送缓冲）</td></tr>
+          <tr><td>中断</td><td>只开 IDLE 空闲中断，抢占优先级 6</td></tr>
+          <tr><td>输入</td><td>BD 队列，深度 2。TERM 任务调用 <code>bd_submit()</code> 放入</td></tr>
+          <tr><td>输出</td><td>TERM 队列（<code>term_post()</code>）；状态总表 <code>dev_status</code>（加锁写）</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>文件</th><th>职责</th></tr></thead>
+        <tbody>
+          <tr><td><code>bd_task.c</code></td><td>业务：主循环、语句处理、SQ / status、发报状态机</td></tr>
+          <tr><td><code>bd_proto.c</code></td><td>纯函数：断句、校验和、拆字段、组包、混编编解码</td></tr>
+          <tr><td><code>gbk.c</code></td><td>UTF-8 ⇄ GBK（查表）</td></tr>
+          <tr><td><code>serial.c</code></td><td>串口 DMA 驱动</td></tr>
+          <tr><td><code>dev_status.c</code></td><td>设备状态总表，心跳从这里取数</td></tr>
+          <tr><td><code>term_task.c</code></td><td>终端侧：42212 交进来，42213 / 42214 组 JSON 发出去</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="codebox"><pre class="code">终端 ──42212──&gt; TERM ──bd_submit()──&gt; [BD队列×2] ──&gt; BD ──$BDTCQ──&gt; USART6 ──&gt; 北斗模块
+终端 &lt;─42213─── TERM &lt;─term_post()─── BD &lt;─$BDFKI─── USART6 &lt;── 北斗模块
+终端 &lt;─42214─── TERM &lt;─term_post()─── BD &lt;─$BDTCI─── USART6 &lt;── 北斗模块
+终端 &lt;─42202─── TERM &lt;─dev_status──── BD &lt;─$BDPWI / $BDGSS / $BDICP
+                                      BD ──$CCICR──&gt; 北斗模块（读卡）</pre></div>
+
+    <h3 id="s1-2">1.2 启动</h3>
+    <p><b>调度器启动前（<code>main()</code>，<code>main.c:111</code>）：</b></p>
+    <ol class="steps">
+      <li><code>dev_status_init()</code>：状态表清零，<code>bd.status = 1</code>（离线），建互斥锁。</li>
+      <li><code>term_init()</code>：TERM 队列（4 × <code>text_msg_t</code>，约 13 KB）。必须先建，BD 一启动就可能 <code>term_post()</code>。</li>
+      <li><code>bd_init()</code>：BD 队列（2 × <code>text_msg_t</code>）。</li>
+      <li>创建 BD 任务。</li>
+    </ol>
+    <p><b>进入 <code>bd_task()</code> 后：</b></p>
+    <ol class="steps">
+      <li><code>wdg_register("BD")</code>：登记看门狗，登记时刻算第一次喂狗，3 s 内必须进入主循环。</li>
+      <li><code>serial_open(SERIAL_BD, 38400)</code>：建二值信号量 → 开 DMA2 时钟 → GPIO 复用、推挽、上拉 → 接收 DMA 循环模式启动 → 发送 DMA 只配置不使能 → USART 8N1、打开收发 DMA 请求和 IDLE 中断 → 使能。只有堆不够建信号量才会失败，失败后 <code>configASSERT</code> 停机，由看门狗复位。</li>
+      <li><code>s_rx_at = now</code>：断线判断从这一刻计时，所以<strong>上电后有 5 s 宽限期</strong>。</li>
+      <li><code>next_icr</code>、<code>next_sq</code> 初值为 0，所以<strong>第一圈就发 ICR、刷新 SQ</strong>。</li>
+    </ol>
+
+    <h3 id="s1-3">1.3 主循环（每圈最长约 20 ms）</h3>
+    <div class="codebox"><pre class="code">for (;;) {
+  ① wdg_feed(wdg);                                  // 报平安
+  ② n = serial_read(≤256 B, 最多等 20 ms);
+     bd_framer_feed() → 每切出一句调用 on_line() → 按类型分发
+  ③ if (在途 &amp;&amp; 过了 deadline)   finish_send(1, "BD no response (FKI timeout)");
+  ④ if (!在途 &amp;&amp; BD 队列取到请求) start_send(&amp;s_req);
+  ⑤ if (!s_card_ok &amp;&amp; 到点)      query_card();     next_icr = now + 5 s
+  ⑥ if (到点)                    update_signal();  next_sq  = now + 1 s
+}</pre></div>
+    <ul class="tight">
+      <li>收到的语句只更新数据；所有定时动作在每圈末尾按 tick 判断。<code>time_reached()</code>（<code>bd_task.c:134</code>）用有符号差值比较，tick 回绕时也正确。</li>
+      <li>③ 在 ④ 前面：同一圈里先结束超时的那条，再取下一条，保证同一时刻只有一条短报文在途。</li>
+      <li>串口有数据时 <code>serial_read</code> 立即返回；没数据最多睡 20 ms，可被 IDLE 中断提前唤醒。</li>
+    </ul>
+
+    <h3 id="s1-4">1.4 接收链路：串口 → 断句 → 解析 → 分发</h3>
+    <h4><code>serial_read()</code>（<code>serial.c:307</code>）</h4>
+    <ul class="tight">
+      <li>DMA 循环写入 <code>s_bd_rx[4096]</code>。写指针 head = 4096 − DMA 剩余计数（NDTR）；读指针 <code>rx_tail</code> 只由 BD 任务移动。单写单读，不加锁。</li>
+      <li><code>rx_copy()</code> 遇到跨越缓冲区末尾的数据时分两段拷贝。</li>
+      <li>先取一次；为空则 <code>xSemaphoreTake(rx_sem, 20 ms)</code>，醒来后再取一次。</li>
+      <li>IDLE 中断（<code>serial.c:380</code>）：先读 SR、再读 DR 清标志（顺带清溢出标志），然后 <code>xSemaphoreGiveFromISR</code>。</li>
+      <li>余量：38400 波特率约 3.8 KB/s，4 KB 存约 1 s；任务每 20 ms 来一次（这期间只到约 77 B）。万一被覆盖，坏语句会被校验和挡掉。</li>
+    </ul>
+
+    <h4>断句 <code>bd_framer_feed()</code>（<code>bd_proto.c:85</code>）</h4>
+    <p class="note">状态存在 <code>s_framer</code>（<code>line[4352]</code> + <code>len</code>），跨两次读取保存。逐字节处理：</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>收到</th><th>处理</th></tr></thead>
+        <tbody>
+          <tr><td><code>$</code></td><td>缓冲已以 <code>*hh</code> 结尾（设备没发换行）就先交出上一句；然后清空，开始新句。没收完的半句直接丢掉</td></tr>
+          <tr><td>还没遇到 <code>$</code> 的字节</td><td>丢弃</td></tr>
+          <tr><td><code>\r</code> / <code>\n</code></td><td>交出当前句；只有一个 <code>$</code>（长度 ≤ 1）的不交</td></tr>
+          <tr><td>累计超过 4351 字节</td><td>整句丢弃（<strong>没有日志</strong>，见 <a href="#s8-3">8.3</a>）</td></tr>
+          <tr><td>其他</td><td>追加</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>一段数据处理完时，缓冲已以 <code>*hh</code> 结尾也立即交出，FKI 不必等下一句来了才处理。</p>
+
+    <h4><code>on_line()</code>（<code>bd_task.c:575</code>）</h4>
+    <ol class="steps">
+      <li>打印原文 <code>BD: rx: ...</code>（<code>CFG_LOG_BD_RAW=1</code>）。PWI、GSS 在 <code>k_periodic</code> 表里，只有 <code>CFG_LOG_BD_PERIODIC=1</code> 才打印。原文必须在解析<strong>之前</strong>打，因为解析会原地改写这一行。</li>
+      <li><code>bd_parse()</code> 失败：打印 <code>BD: bad sentence (checksum should be *XX, or bad format), dropped</code>，丢弃。</li>
+      <li>成功：<code>s_rx_at = now</code>、<code>s_rx_bytes_mark = s_rx_bytes</code>。<strong>任何类型的有效语句都算"链路活着"。</strong></li>
+      <li>查 <code>k_handlers[]</code>：PWI / GSS / ICP / FKI / TCI 各有处理函数；其他类型（SNR、IBD、ACK…）忽略。</li>
+    </ol>
+
+    <h4><code>bd_parse()</code>（<code>bd_proto.c:161</code>）</h4>
+    <ol class="steps">
+      <li>必须以 <code>$</code> 开头。</li>
+      <li>有 <code>*</code>：<code>$</code> 与最后一个 <code>*</code> 之间所有字节 XOR，必须等于 <code>*</code> 后两位十六进制（大小写都认），通过后把 <code>*</code> 改成 <code>\0</code>。<strong>没有 <code>*</code> 的语句不校验，照样接受。</strong></li>
+      <li>语句头（第一个逗号之前）至少 4 个字符，取最后 3 个作为类型：不看发送方标识，BD / CC / GN 开头都认。</li>
+      <li>逗号改 <code>\0</code>，<code>argv[i]</code> 依次指向各字段，最多 32 个。<strong><code>argv[0]</code> = 协议表的第 1 字段</strong>（下标 = 编号 − 1）。</li>
+    </ol>
+    <div class="codebox"><pre class="code">"$BDFKI,032025,TCQ,Y,0,0*77"  →  type "FKI", argc 5, argv = { "032025", "TCQ", "Y", "0", "0" }</pre></div>
+
+    <h3 id="s1-5">1.5 读卡：ICR → ICP</h3>
+    <p><b>发送</b>：<code>query_card()</code>（<code>bd_task.c:608</code>）组 <code>$CCICR,0,00*68\r\n</code>（16 B）。<code>s_card_ok</code> 为 false 时每 5 s 一次，上电第一圈就发。</p>
+    <p><b>接收</b>：<code>on_icp()</code>（<code>bd_task.c:402</code>），字段少于 18 个时忽略，等下次重发。<code>on_icp()</code> 不看 <code>s_card_ok</code>，之后再收到 ICP 也会照样更新。</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>协议字段</th><th>argv</th><th>含义（3.md 表 6）</th><th>处理</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>[0]</td><td>用户地址（本机卡号）</td><td><code>card.id</code>，最多 15 字符</td></tr>
+          <tr><td>13</td><td>[12]</td><td>区域服务能力标识</td><td>等于 1 才记字段 14</td></tr>
+          <tr><td>14</td><td>[13]</td><td>服务频度（秒）</td><td><code>freq_region</code>；无权限记 0</td></tr>
+          <tr><td>15</td><td>[14]</td><td>通信长度等级 1~5</td><td>查表得 <code>len_cn</code> / <code>len_en</code>；不在 1~5 时都为 0</td></tr>
+          <tr><td>16</td><td>[15]</td><td>全球标识</td><td>未使用</td></tr>
+          <tr><td>17</td><td>[16]</td><td>全球短报文交互权限</td><td>等于 1 才记字段 18</td></tr>
+          <tr><td>18</td><td>[17]</td><td>全球短报文服务频度（秒）</td><td><code>freq_global</code>；无权限记 0</td></tr>
+          <tr><td>19~23</td><td>[18]~[22]</td><td>全球长度等级、下属用户数、编组…</td><td>未使用</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>长度等级</th><th>CN（汉字数）</th><th>EN（字符数）</th><th>对应 bit（汉字 14 bit、字符 7 bit）</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>42</td><td>82</td><td>602</td></tr>
+          <tr><td>2</td><td>113</td><td>224</td><td>1596</td></tr>
+          <tr><td>3</td><td>322</td><td>642</td><td>4522</td></tr>
+          <tr><td>4</td><td>497</td><td>992</td><td>6972</td></tr>
+          <tr><td>5</td><td>999</td><td>1996</td><td>14000</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>加锁写入 <code>dev_status</code>：<code>bd.card = card</code>；<code>bd.cd = freq_global</code>（上报全球频度）；<code>bd.maxlen = len_cn</code>（上报汉字数）。然后 <code>s_card_ok = true</code>，<strong>不再发 ICR</strong>。</p>
+    <p class="note">日志：<code>BD: card 1859836, freq region 60s global 60s, level 3 (cn 322, en 642)</code></p>
+
+    <h3 id="s1-6">1.6 信号：PWI、GSS → SQ、status</h3>
+    <h4>PWI（<code>on_pwi()</code>，<code>bd_task.c:344</code>）</h4>
+    <div class="codebox"><pre class="code">$BDPWI,时间,旧体制波束数N,[N 组 × 3 字段],新体制波束数M,[M 组 × 4 字段]*hh
+old = atoi(argv[1]);  idx = 2 + old × 3;  new = atoi(argv[idx]);
+例：$BDPWI,012430.31,00,03,11,45,45,00,16,49,49,00,21,46,46,00*4B  →  old 0, idx 2, new 3</pre></div>
+    <ul class="tight">
+      <li><code>old</code> 不在 0~16 或 <code>idx</code> 越界不更新；<code>new</code> 不在 0~16 也不更新。</li>
+      <li><strong>只用新体制波束锁定数</strong>。design.txt 原写旧体制，但实测旧体制一直是 <code>00</code>，用它 SQ 永远是 0，所以有意改成新体制。</li>
+      <li>3.md 表 3 里新体制每个波束是 3 个字段（编号、S2C_d、S2C_p 载噪比），111.pdf 截图的实际输出是 4 个；代码只取数量，不受影响。</li>
+    </ul>
+    <h4>GSS（<code>on_gss()</code>，<code>bd_task.c:376</code>）</h4>
+    <p>只取 <code>argv[0]</code> 可用卫星数（0~14）。区域短报文模块不输出 GSS，这一路一直没数据。两路都经 <code>sig_update()</code> 记录：计数夹到 0~255，记下 tick，置 <code>seen</code>。</p>
+    <h4><code>update_signal()</code>（<code>bd_task.c:658</code>，每 1 s）</h4>
+    <ol class="steps">
+      <li><code>link = (now − s_rx_at ≤ 5 s)</code>。</li>
+      <li>每路 <code>sig_level()</code>：从没收到或超过 5 s 没更新返回 −1，否则 <code>min(数量, 4)</code>。</li>
+      <li>两路组合：都有取 <code>(b + s + 1) / 2</code>（四舍五入平均）；只有一路用这一路；都没有为 0。</li>
+      <li>串口不通时 SQ 强制为 0。</li>
+      <li>status：串口不通 → <b>2 异常</b>；否则 SQ &gt; 0 → <b>0 在线</b>，SQ = 0 → <b>1 离线</b>。</li>
+      <li>加锁写 <code>bd.sq</code>、<code>bd.status</code>；变化时打 <code>BD: status a -> b (...)</code>、<code>BD: SQ a -> b (beams x, sats y)</code>。</li>
+      <li>串口不通、但这期间有字节进来（<code>s_rx_bytes != s_rx_bytes_mark</code>），每 5 s 打 <code>BD: N bytes received on serial but no valid sentence, check baud rate (38400) and wiring</code>；完全没字节不打。</li>
+    </ol>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>情况</th><th>SQ</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>波束 3、卫星 6</td><td>(3 + 4 + 1) / 2 = 4</td><td>0 在线</td></tr>
+          <tr><td>只有波束 3（区域模块）</td><td>3</td><td>0 在线</td></tr>
+          <tr><td>有语句，但波束 0、卫星 0</td><td>0</td><td>1 离线</td></tr>
+          <tr><td>上电 0~5 s 还没数据</td><td>0</td><td>1 离线</td></tr>
+          <tr><td>超过 5 s 没有任何有效语句</td><td>0</td><td>2 异常</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 id="s1-7">1.7 发报：42212 → TCQ → FKI → 42213</h3>
+    <h4>终端侧（TERM 任务，<code>term_task.c</code>）</h4>
+    <ol class="steps">
+      <li><code>handle_json()</code>：取 <code>msg_type</code>；缺 <code>msg_id</code> / <code>taskid</code> 各补一个 UUID；用 <code>timestamp</code> 校时。</li>
+      <li><code>forward_text(DEV_BD)</code>（<code>term_task.c:314</code>）：取 <code>target_id</code>（≤ 23 B）、<code>msg</code>（<code>\uXXXX</code> 已还原成 UTF-8，≤ 3071 B）。</li>
+      <li><code>bd_submit()</code> → <code>xQueueSend(…, 0)</code>：按值拷贝，不等待。</li>
+      <li>失败立即回 42213、status 1：<code>missing or invalid target_id</code> / <code>missing msg or msg too long</code> / <code>device busy or not available</code>（BD 队列满：1 条在途 + 2 条排队）。</li>
+      <li>成功只打 <code>TERM: BD text task &lt;id&gt; -> &lt;号码&gt;, queued</code>，不回复，等 BD 交回结果。</li>
+    </ol>
+    <h4><code>start_send()</code>（<code>bd_task.c:276</code>）</h4>
+    <ol class="steps">
+      <li>登记在途：<code>s_pending.active = true</code>，存 <code>msg_id</code> / <code>taskid</code>；taskstate = (taskid, 0)。</li>
+      <li>检查 → 编码 → 组包 → 发送，任一步失败调用 <code>finish_send(1, 原因)</code>。</li>
+      <li>截止时刻 = now + 字节数 × 10 × 1000 / 38400 ms（串口发送时间）+ 10000 ms。</li>
+      <li>taskstate 进度 50；日志 <code>BD: TCQ task &lt;id&gt; -> &lt;号码&gt;, N bytes GBK, M bytes on serial</code> + <code>BD: tx: $BDTCQ,...</code>。</li>
+    </ol>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>检查</th><th>失败原因（成为 42213 的 errormsg）</th></tr></thead>
+        <tbody>
+          <tr><td>target_id 非空且全是数字</td><td><code>invalid target_id</code></td></tr>
+          <tr><td>正文不为空</td><td><code>empty msg</code></td></tr>
+          <tr><td>UTF-8 转 GBK 后 ≤ 2000 B；混编放得下；整条语句 ≤ 4352 B</td><td><code>msg too long</code></td></tr>
+          <tr><td>串口上一包 1.5 s 内发完</td><td><code>BD serial busy</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="codebox"><pre class="code">$BDTCQ,&lt;收信方&gt;,2,2,3,A4&lt;GBK十六进制&gt;,0*hh\r\n
+              │ │ │                  └ 报文通信频度（秒），0 = 单次（3.md 表 9）。代码写死 0
+              │ │ └ 编码类型 3 = 混编
+              │ └ 入站确认申请 CFG_BD_TCQ_CONFIRM = 2（需确认）
+              └ 频点 CFG_BD_TCQ_FREQ = 2（Lf1）</pre></div>
+    <p class="note"><code>serial_write()</code>（<code>serial.c:338</code>）：DMA 使能位还是 1（上一包没发完）就每 1 tick 查一次，最多等 1.5 s；然后拷进 <code>s_bd_tx</code>、清标志、写长度、使能 DMA，<strong>立即返回</strong>，不等发完。</p>
+
+    <h4><code>on_fki()</code>（<code>bd_task.c:463</code>）</h4>
+    <p class="note">格式按 111.pdf 截图推断：<code>$BDFKI,时间,指令名,执行情况,失败原因,等待时间*hh</code>。先打 <code>BD: FKI parsed: cmd X, result Y, reason Z, wait W</code>（缺字段显示 <code>-</code>）。</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>条件</th><th>处理</th></tr></thead>
+        <tbody>
+          <tr><td>字段少于 3 个</td><td>忽略</td></tr>
+          <tr><td>指令名不是 TCQ（OFQ / EPQ / QRQ 也会出 FKI）</td><td>忽略：<code>FKI is for X, not TCQ, ignored</code></td></tr>
+          <tr><td>没有在途短报文</td><td>忽略：<code>FKI for TCQ but no TCQ is waiting (came after timeout?)</code></td></tr>
+          <tr><td>执行情况首字母 <code>Y</code></td><td><code>finish_send(0, "")</code></td></tr>
+          <tr><td>失败原因 <code>1</code>（推断为频度未到）</td><td><code>finish_send(1, "BD send too frequent, wait Ns")</code></td></tr>
+          <tr><td>其他失败原因</td><td><code>finish_send(1, "BD rejected, FKI reason x, y")</code></td></tr>
+          <tr><td>（主循环）过了截止时刻</td><td><code>finish_send(1, "BD no response (FKI timeout)")</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h4><code>finish_send()</code>（<code>bd_task.c:219</code>）</h4>
+    <p>组 <code>TEXT_RESULT</code>（dev = BD、status、<code>msg_id</code> / <code>taskid</code> 取自 <code>s_pending</code>、text = 原因）→ <code>term_post()</code>（最多等 100 ms，放不进去打 <code>terminal queue full, result ... lost</code>）→ 打 <code>BD: task &lt;id&gt; sent / failed: 原因</code> → 清在途、清 taskstate。TERM 收到后 <code>reply_status(42213, 原 msg_id, 原 taskid, status, 原因)</code>。</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>时刻</th><th>心跳 42202 的 taskstate</th></tr></thead>
+        <tbody>
+          <tr><td>空闲</td><td><code>{}</code></td></tr>
+          <tr><td><code>start_send</code> 刚开始</td><td><code>{taskid, sendprogress: 0}</code>（一瞬间，通常看不到）</td></tr>
+          <tr><td>TCQ 已交给串口，等 FKI</td><td><code>{taskid, sendprogress: 50}</code></td></tr>
+          <tr><td><code>finish_send</code> 之后</td><td><code>{}</code>（没有 100 这个值）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 id="s1-8">1.8 收报：TCI → 42214</h3>
+    <p><code>on_tci()</code>（<code>bd_task.c:509</code>）。字段（3.md 表 12）：1 发信方、2 收信方、3 频点、4 时间、5 编码类型、6 数据标识、7 通信数据；少于 7 个忽略。</p>
+    <ol class="steps">
+      <li>打 <code>BD: TCI parsed: from A to B, freq F, time T, code type C, data N chars</code>。</li>
+      <li>编码类型 3：<code>bd_mixed_decode()</code> 要求 <code>A4</code> 前缀、长度偶数、全十六进制、还原后 ≤ 2000 B；不满足打 <code>not valid mixed code (A4 + hex), used as plain text</code>。</li>
+      <li>类型 1 / 2，或混编解码失败：数据原文当 GBK / ASCII。</li>
+      <li><code>gbk_to_utf8()</code>：结果 ≤ 3071 B，在字符边界截断；查不到的码、孤立高字节换成 <code>?</code>。</li>
+      <li><code>TEXT_RECV</code>，<code>peer</code> = 发信方，<code>msg_id</code> / <code>taskid</code> 留空 → <code>term_post()</code>。</li>
+      <li>TERM 生成两个独立 UUID，发 42214 <code>{taskid, target_id: 发信方, msg}</code>；终端回的 42215 只打日志。本机不向模块回任何收报确认。</li>
+    </ol>
+
+    <h3 id="s1-9">1.9 编码规则（发和收对称）</h3>
+    <div class="codebox"><pre class="code">发：UTF-8 ──gbk_from_utf8()──&gt; GBK ──bd_mixed_encode()──&gt; "A4" + 每字节两位大写十六进制
+收："A4…" ──bd_mixed_decode()──&gt; GBK ──gbk_to_utf8()──&gt; UTF-8
+例："12一二" ⇄ GBK 31 32 D2 BB B6 FE ⇄ "A43132D2BBB6FE"
+GBK 里没有的字（emoji、部分生僻字）和非法 UTF-8 都换成 '?'</pre></div>
+
+    <h3 id="s1-10">1.10 容量</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>项</th><th>上限</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>正文 UTF-8</td><td>3071 B</td><td><code>APP_TEXT_LEN</code> = 3072</td></tr>
+          <tr><td>正文 GBK</td><td>2000 B</td><td>1000 汉字或 2000 ASCII（<code>BD_GBK_MAX</code>）</td></tr>
+          <tr><td>混编文本</td><td>4003 B</td><td><code>A4</code> + 4000 位十六进制 + 结束符</td></tr>
+          <tr><td>一条语句</td><td>4352 B</td><td><code>BD_LINE_MAX</code>；最长 TCQ 约 4030 B，串口发约 1.05 s</td></tr>
+          <tr><td>串口发送 / 接收缓冲</td><td>4400 B / 4096 B</td><td><code>serial.c</code></td></tr>
+          <tr><td>字段数</td><td>32</td><td><code>BD_FIELD_MAX</code>（ICP 有 23 个）</td></tr>
+          <tr><td>BD 队列 / TERM 队列</td><td>2 / 4</td><td>BD 另有 1 条在途</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">本机只卡 1000 汉字这一条硬上限。是否超过卡的等级（如等级 3 只能 322 汉字）、频点限制（3.md：Lf0 入站不超过 120 汉字）由模块判断，结果经 FKI 失败回给终端。</p>
+
+    <h3 id="s1-11">1.11 看门狗</h3>
+    <p>BD 每圈 <code>wdg_feed()</code>；WDG 任务每 500 ms 检查，任一登记任务超过 3 s 没报平安就停喂，IWDG 约 4 s（LSI 偏差下 2.7~7.5 s）后复位。BD 单圈最坏阻塞：等数据 20 ms + 等串口发完 ≤ 1.5 s + <code>term_post</code> ≤ 100 ms + 日志（115200 下 1 KB 约 90 ms，最长报文约 0.5 s），都在 3 s 以内。</p>
+  </section>
+
+  <!-- ============================== 2 调试环境 ============================== -->
+  <section id="s2">
+    <h2>2 调试环境：三根线</h2>
+    <p class="note">联调要同时看到三个方向：<b>本机日志</b>、<b>终端 UDP</b>、<b>北斗串口</b>。北斗这一侧有三种接法，按手头条件选。</p>
+    <div class="codebox"><pre class="code">                 ┌──────────── 探索者 STM32F407 ────────────┐
+PC SSCOM 串口窗口 ◀── USB_232 口（CH340）── USART1 PA9/PA10   │  调试日志 115200 8N1，UTF-8 显示
+PC term_sim.py / SSCOM UDP ◀── 网线 ── LAN8720A               │  PC 10.9.0.24:5000 ⇄ 本机 10.9.0.57:4220
+PC bd_sim.py / SSCOM 串口  ◀── USB-TTL ── P4 排针 PC6/PC7     │  北斗口 38400 8N1（代替真模块）
+                 └──────────────────────────────────────────┘</pre></div>
+
+    <h3 id="s2-1">2.1 调试日志（必接）</h3>
+    <ul class="tight">
+      <li>板上 USB_232 口（CH340）直连 PC，SSCOM 选对应 COM 口，<b>115200 8N1</b>，编码选 <b>UTF-8</b>（报文里的中文才正常）。</li>
+      <li>每行开头的 <code>[50120]</code> 是开机后的毫秒数，不用再勾 SSCOM 的时间戳。</li>
+      <li>开机第一行 <code>CommGateway start, reset by …</code> 是复位原因：反复出现 <code>watchdog</code> 说明有任务卡死，往上找 <code>WDG: task XX stuck</code>。</li>
+    </ul>
+
+    <h3 id="s2-2">2.2 终端（UDP）</h3>
+    <ul class="tight">
+      <li>PC 有线网卡设静态 <b>10.9.0.24 / 255.255.255.0</b>（= <code>CFG_TERM_IP</code>）。本机只收来自这个 IP 的包，回复固定发到 <b>10.9.0.24:5000</b>。</li>
+      <li>工具二选一：<code>term_sim.py</code>（<a href="#sa-2">附录</a>，会自动解析回复、自动回 42215）；或 SSCOM UDP 窗口（本地 10.9.0.24:5000，远程 10.9.0.57:4220，HEX 关、编码 UTF-8、不加回车换行）。两者都要占 5000 端口，不能同时开。</li>
+      <li>开机日志依次出现 <code>NET: PHY id 0007:C0Fx …</code>、<code>NET: link up …</code>、<code>NET: up, ip 10.9.0.57</code> 才说明网络正常。</li>
+    </ul>
+
+    <h3 id="s2-3">2.3 北斗口（三选一）</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>接法</th><th>怎么接</th><th>适合</th></tr></thead>
+        <tbody>
+          <tr><td><b>A 真模块</b></td><td>P4 排针 PC6（TX）/ PC7（RX）→ TTL 转 RS422 模块 → 北斗模块。RS422 两对差分线：本机 TX 对接模块 RX，A/B 不能接反</td><td>最终联调</td></tr>
+          <tr><td><b>B 模拟器（推荐）</b></td><td>USB-TTL（<b>3.3 V</b> 电平）直接接 P4：PC6 → USB-TTL 的 RXD，PC7 ← TXD，GND 相连。PC 上跑 <code>bd_sim.py COMx</code></td><td>没有模块时跑通整条链路；能复现超时、频度未到等难触发的情况</td></tr>
+          <tr><td><b>C 手工</b></td><td>同 B 的接线，PC 上用 SSCOM 串口窗口 38400 8N1，手工发 <a href="#s4">第 4 节</a> 里算好校验和的语句</td><td>单步验证某一种语句</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn">PC6 / PC7 同时连着摄像头接口 P8（D0 / D1），PC6 还连着 WM8978 的 MCLK：<b>摄像头模块不要插</b>。用接法 B / C 时不要用 5 V 的 USB-TTL。想旁听真模块的通信：RS422 是点对点全双工，用两个只接 RX 的 USB-RS422 分别挂在两对线上，各开一个 SSCOM 窗口。</div>
+  </section>
+
+  <!-- ============================== 3 调试手段 ============================== -->
+  <section id="s3">
+    <h2>3 调试手段</h2>
+
+    <h3 id="s3-1">3.1 日志开关（<code>app_config.h</code>）</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>开关</th><th>默认</th><th>打开后能看到</th></tr></thead>
+        <tbody>
+          <tr><td><code>CFG_LOG_BD_RAW</code></td><td>1</td><td>北斗串口收发的每条语句原文：<code>BD: rx: $BDFKI,…</code>、<code>BD: tx: $BDTCQ,…</code></td></tr>
+          <tr><td><code>CFG_LOG_BD_PERIODIC</code></td><td>0</td><td>每秒的 PWI / GSS 原文和解析结果 <code>BD: PWI parsed: old beams 0, new beams 3</code>、<code>BD: GSS parsed: sats 2</code>，以及 PWI 字段对不上的原因。<b>查 SQ 不对时打开</b></td></tr>
+          <tr><td><code>CFG_LOG_TERM_RAW</code></td><td>1</td><td>和终端收发的 JSON 原文</td></tr>
+          <tr><td><code>CFG_LOG_TERM_HEARTBEAT</code></td><td>1</td><td>42201 / 42202 心跳也打印；终端心跳频繁时关掉</td></tr>
+          <tr><td><code>CFG_LOG_RAW_MAX</code></td><td>2048</td><td>一个报文最多打印的字节数，超出只提示字节数</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">不受开关控制、总会打印的：status / SQ 变化、读卡结果、TCQ 发出、FKI / TCI 解析结果、各种失败原因。设备每秒还输出别的语句（SNR、ZTI…）刷屏时，把类型加进 <code>bd_task.c</code> 的 <code>k_periodic[]</code>。</p>
+
+    <h3 id="s3-2">3.2 手工发北斗语句：校验和怎么算</h3>
+    <p>校验和 = <code>$</code> 与 <code>*</code> 之间所有字节的异或，写成两位大写十六进制。三种算法：</p>
+    <ol class="steps">
+      <li><b>让固件告诉你</b>：随便写个 <code>*00</code> 发过去，日志会打 <code>BD: bad sentence (checksum should be *77, …)</code>，照着改。</li>
+      <li><b>PowerShell</b>（不用装任何东西，支持汉字，按 GBK 算）：</li>
+    </ol>
+    <div class="codebox"><pre class="code">function BdCks([string]$s){ $x=0; foreach($b in [Text.Encoding]::GetEncoding(936).GetBytes($s)){ $x = $x -bxor $b }; '${0}*{1:X2}' -f $s,$x }
+BdCks 'BDFKI,032025,TCQ,Y,0,0'        # 输出 $BDFKI,032025,TCQ,Y,0,0*77</pre></div>
+    <ol class="steps" start="3">
+      <li><b>bd_sim.py</b> 的 <code>raw</code> 命令会自动补 <code>$</code>、校验和、换行：<code>raw BDFKI,033000,OFQ,Y,0,0</code>。</li>
+    </ol>
+    <div class="callout">SSCOM 发送北斗语句时勾上"加回车换行"（<code>\r\n</code>）。不勾也能处理：断句器见到 <code>*hh</code> 结尾就交出。汉字方式（编码类型 1）的 TCI 里是 GBK 字节，SSCOM 要用 HEX 发送，见用例 18。</div>
+
+    <h3 id="s3-3">3.3 看任意新语句的字段编号</h3>
+    <p>接入新设备或新语句时，先让固件把每个字段的编号打出来，和手册逐个对照，比肉眼数逗号可靠。在 <code>bd_task.c</code> 里加一个临时处理函数：</p>
+    <p class="file">bd_task.c（加在 k_handlers[] 之前）</p>
+    <div class="codebox"><pre class="code">/* 调试用：把一条语句的每个字段按协议编号（从 1 开始）打出来 */
+static void log_fields(const bd_sentence_t *s)
+{
+    int i;
+
+    LOG("BD: %s has %d fields", s-&gt;type, s-&gt;argc);
+    for (i = 0; i &lt; s-&gt;argc; i++) {
+        LOG("BD:   %s field %d = \"%s\"", s-&gt;type, i + 1, s-&gt;argv[i]);
+    }
+}</pre></div>
+    <p>再在 <code>k_handlers[]</code> 里加一行 <code>{ "IBD", log_fields },</code>（类型换成要看的），收到时日志就是 <code>BD:   IBD field 4 = "1859836"</code> 这样，编号和手册表格的编号一致。看完删掉，或换成正式的处理函数。</p>
+
+    <h3 id="s3-4">3.4 Keil 在线调试</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>想看</th><th>断点 / 观察</th></tr></thead>
+        <tbody>
+          <tr><td>每条收到的语句</td><td>断在 <code>on_line()</code>；看 <code>line</code></td></tr>
+          <tr><td>读卡结果</td><td>断在 <code>on_icp()</code> 的 <code>st = dev_status_lock();</code> 一行；看局部变量 <code>card</code></td></tr>
+          <tr><td>TCQ 组出来的样子</td><td>断在 <code>start_send()</code> 的 <code>tx_ms = …</code> 一行；看 <code>s_tx</code>、<code>len</code>、<code>gbk_len</code></td></tr>
+          <tr><td>回执怎么判的</td><td>断在 <code>on_fki()</code>、<code>finish_send()</code>；看 <code>s_pending</code>、<code>err</code></td></tr>
+          <tr><td>SQ 怎么算的</td><td>断在 <code>update_signal()</code>；看 <code>beams</code>、<code>sats</code>、<code>link</code>、<code>s_beams</code>、<code>s_sats</code>、<code>s_rx_at</code></td></tr>
+          <tr><td>断句器里攒了什么</td><td>Watch <code>s_framer.len</code>、<code>s_framer.line</code></td></tr>
+          <tr><td>串口 DMA 写到哪了</td><td>Peripherals → System Viewer → DMA2 → Stream1 的 NDTR（写指针 = 4096 − NDTR）；Stream6 的 CR.EN = 1 表示还在发送</td></tr>
+          <tr><td>有没有溢出</td><td>USART6 的 SR.ORE；溢出由空闲中断读 SR + DR 顺带清掉</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="tight">
+      <li>文件内 <code>static</code> 变量（<code>s_pending</code>、<code>s_framer</code> 等）：在源码里选中变量名 → 右键 → Add to Watch 1。</li>
+      <li>看门狗已配置成"内核暂停时 IWDG 也暂停"（<code>wdg.c</code> 的 <code>DBGMCU_IWDG_STOP</code>），断点停多久都不会复位。tick 也停，FKI 超时不会因为停在断点而提前到。</li>
+      <li><b>但 DMA 不停</b>：停在断点期间模块还在每秒发 PWI，串口 DMA 照样往环形缓冲里写，停超过约 1 s 缓冲就会绕一圈覆盖未读数据。继续运行后出现几条 <code>bad sentence</code> 是正常的。</li>
+      <li>不要在 <code>serial_irq()</code> 里下断点调业务，中断里停住会把后续空闲中断都合并掉。</li>
+    </ul>
+
+    <h3 id="s3-5">3.5 查栈和堆（改了缓冲、队列之后必做）</h3>
+    <p>BD 栈 4 KB。新增处理函数里如果开了大的局部数组，先量一下余量。在 <code>FreeRTOSConfig.h</code> 加一行：</p>
+    <div class="codebox"><pre class="code">#define INCLUDE_uxTaskGetStackHighWaterMark         1</pre></div>
+    <p>然后在 <code>update_signal()</code> 末尾临时加一行（每秒打印一次，看完删掉）：</p>
+    <div class="codebox"><pre class="code">LOG("BD: stack free %u words, heap free %u, min ever %u", (unsigned)uxTaskGetStackHighWaterMark(NULL),
+    (unsigned)xPortGetFreeHeapSize(), (unsigned)xPortGetMinimumEverFreeHeapSize());</pre></div>
+    <p class="note">栈剩余低于 100 字就该加栈（<code>main.c</code> 的 <code>STACK_BD</code>）。RTOS 堆在 CCM 里固定 64 KB，队列、任务栈都从这里分配；<code>min ever</code> 接近 0 时会触发 <code>FATAL: out of heap</code> 复位。</p>
+  </section>
+
+  <!-- ============================== 4 测试用例 ============================== -->
+  <section id="s4">
+    <h2>4 测试用例</h2>
+    <p class="note">按顺序做一遍就覆盖了北斗任务的所有分支。"发北斗语句"指在北斗口发（SSCOM 手工或 <code>bd_sim.py</code> 的 <code>raw</code>）；"终端"指 <code>term_sim.py</code> 或 SSCOM UDP。下面的语句校验和都已算好，可以直接复制。</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>#</th><th>操作</th><th>本机日志应出现</th><th>终端应收到</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>北斗口什么都不接，上电</td><td class="wrap">每 5 s <code>BD: query card (ICR)</code> + <code>BD: tx: $CCICR,0,00*68</code>；约 5 s 后 <code>BD: status 1 -> 2 (no valid sentence on serial)</code></td><td>心跳 BD.status = 2，SQ "0"</td></tr>
+          <tr><td>2</td><td>北斗口波特率故意配错（如 SSCOM 用 9600）随便发点东西</td><td class="wrap">每 5 s <code>BD: N bytes received on serial but no valid sentence, check baud rate (38400) and wiring</code></td><td>status 2</td></tr>
+          <tr><td>3</td><td>每秒发 <code>$BDPWI,012430.31,00,03,11,45,45,00,16,49,49,00,21,46,46,00*4B</code></td><td class="wrap"><code>BD: status 2 -> 0 (online)</code>、<code>BD: SQ 0 -> 3 (beams 3, sats -1)</code></td><td>status 0，SQ "3"</td></tr>
+          <tr><td>4</td><td>再每秒加发 <code>$BDGSS,06,32*46</code></td><td class="wrap"><code>BD: SQ 3 -> 4 (beams 3, sats 4)</code>（(3+4+1)/2 = 4）</td><td>SQ "4"</td></tr>
+          <tr><td>5</td><td>改为每秒只发 <code>$BDPWI,012431.31,00,00*4D</code></td><td class="wrap">约 5 s 内 GSS 过期，<code>BD: status 0 -> 1 (no signal)</code>、<code>BD: SQ … -> 0</code></td><td>status 1</td></tr>
+          <tr><td>6</td><td>发 <code>$BDICP,1859836,0,0,3,0,N,3,N,1,0,0,3,1,60,3,1,1,60,1,0,0,0,0*49</code></td><td class="wrap"><code>BD: card 1859836, freq region 60s global 60s, level 3 (cn 322, en 642)</code>；此后不再发 ICR</td><td>CD 60，maxlength "322"</td></tr>
+          <tr><td>7</td><td>发 <code>$BDICP,1859836,0,0,3,0,N,3,N,1,0,0,3,1,60,3,1,0,0,1,0,0,0,0*7E</code>（无全球权限）</td><td class="wrap"><code>BD: card 1859836, freq region 60s global 0s, …</code></td><td>CD 0</td></tr>
+          <tr><td>8</td><td>终端 <code>bd 4217580 12一二</code></td><td class="wrap"><code>BD: TCQ task … -> 4217580, 6 bytes GBK, 42 bytes on serial</code>、<code>BD: tx: $BDTCQ,4217580,2,2,3,A43132D2BBB6FE,0*09</code></td><td>（等回执，心跳 sendprogress 50）</td></tr>
+          <tr><td>9</td><td>接 8，发 <code>$BDFKI,032025,TCQ,Y,0,0*77</code></td><td class="wrap"><code>BD: FKI parsed: cmd TCQ, result Y, reason 0, wait 0</code>、<code>BD: task … sent</code></td><td>42213 status 0</td></tr>
+          <tr><td>10</td><td>再发一条，回 <code>$BDFKI,032816,TCQ,N,1,7*6E</code></td><td class="wrap"><code>BD: task … failed: BD send too frequent, wait 7s</code></td><td>42213 status 1，同一原因</td></tr>
+          <tr><td>11</td><td>再发一条，回 <code>$BDFKI,032900,TCQ,N,3,0*6D</code></td><td class="wrap"><code>failed: BD rejected, FKI reason 3, 0</code></td><td>42213 status 1</td></tr>
+          <tr><td>12</td><td>再发一条，什么都不回</td><td class="wrap">约 10 s 后 <code>failed: BD no response (FKI timeout)</code></td><td>42213 status 1</td></tr>
+          <tr><td>13</td><td>接 12，超时后再发 <code>$BDFKI,032025,TCQ,Y,0,0*77</code></td><td class="wrap"><code>FKI for TCQ but no TCQ is waiting (came after timeout?), ignored</code></td><td>无</td></tr>
+          <tr><td>14</td><td>发 <code>$BDFKI,033000,OFQ,Y,0,0*6F</code></td><td class="wrap"><code>BD: FKI is for OFQ, not TCQ, ignored</code></td><td>无</td></tr>
+          <tr><td>15</td><td>不回 FKI，终端连发 4 条 42212</td><td class="wrap">第 4 条（发得极快时可能是第 3 条）<code>TERM: BD text task … rejected: device busy or not available</code></td><td>该条立即 42213 失败；前几条依次超时</td></tr>
+          <tr><td>16</td><td>终端 <code>bd 12a 你好</code></td><td class="wrap"><code>BD: task … failed: invalid target_id</code></td><td>42213 status 1</td></tr>
+          <tr><td>17</td><td>发 <code>$BDTCI,1859836,1859906,2,034122.00,3,0,A43132D2BBB6FE*18</code></td><td class="wrap"><code>BD: TCI parsed: from 1859836 …, code type 3, data 14 chars</code>、<code>BD: TCI from 1859836, text 8 bytes UTF-8: 12一二</code></td><td>42214 target_id 1859836，msg "12一二"</td></tr>
+          <tr><td>18</td><td>汉字方式 TCI，SSCOM 用 <b>HEX 发送</b>：<code>24 42 44 54 43 49 2C 31 38 35 39 38 33 36 2C 31 38 35 39 39 30 36 2C 32 2C 30 33 34 31 32 32 2E 30 30 2C 31 2C 30 2C D2 BB B6 FE 2A 34 43 0D 0A</code></td><td class="wrap"><code>code type 1</code>，正文 <code>一二</code></td><td>msg "一二"</td></tr>
+          <tr><td>19</td><td>代码方式 <code>$BDTCI,1859836,1859906,2,034122.00,2,0,1234567890*6F</code></td><td class="wrap">正文 <code>1234567890</code></td><td>msg "1234567890"</td></tr>
+          <tr><td>20</td><td>校验和写错 <code>$BDFKI,032025,TCQ,Y,0,0*00</code></td><td class="wrap"><code>BD: bad sentence (checksum should be *77, or bad format), dropped</code></td><td>无</td></tr>
+          <tr><td>21</td><td>一句分两次发：先 <code>$BDFKI,032025,TC</code>（不加换行），再 <code>Q,Y,0,0*77</code></td><td class="wrap">只处理一次，内容完整</td><td>—</td></tr>
+          <tr><td>22</td><td>不加换行发 <code>$BDFKI,032025,TCQ,Y,0,0*77</code></td><td class="wrap">照样立即处理（见到 <code>*hh</code> 结尾就交出）</td><td>—</td></tr>
+          <tr><td>23</td><td>终端 <code>hb</code></td><td class="wrap"><code>TERM: tx 42202 …</code></td><td>Config.BD 各字段与上面的状态一致</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout ok">用 <code>bd_sim.py</code> 时：用例 3~5 用 <code>sig 3 0</code> / <code>sig 3 6</code> / <code>sig 0 0</code>；用例 1 用 <code>silent</code>；用例 9~12 先 <code>fki y</code> / <code>fki n1</code> / <code>fki n3</code> / <code>fki none</code> 再从终端发；用例 17 用 <code>tci 1859836 12一二</code>。模拟器收到 ICR 会自动回用例 6 的 ICP。</div>
+  </section>
+
+  <!-- ============================== 5 故障对照 ============================== -->
+  <section id="s5">
+    <h2>5 故障对照</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>现象</th><th>可能原因</th><th>怎么查 / 怎么改</th></tr></thead>
+        <tbody>
+          <tr><td>一直没有 <code>BD: rx:</code>，status 2，也没有 "bytes received"</td><td>北斗口完全没收到字节：线断、TX/RX 没交叉、模块没电、RS422 A/B 接反、摄像头模块插着</td><td>用 USB-TTL 接 PC7 自己发一条，看有没有 <code>BD: rx</code>；万用表量 RS422 差分</td></tr>
+          <tr><td>"N bytes received on serial but no valid sentence"</td><td>有字节但凑不出有效语句：波特率不对、电平不对（5 V / RS232 直接接 TTL）、极性反</td><td>改 <code>CFG_BD_BAUDRATE</code> 或模块波特率；SSCOM 旁听确认模块输出</td></tr>
+          <tr><td>偶尔 <code>bad sentence (checksum should be …)</code></td><td>线路干扰；断点停太久后缓冲被覆盖；手工模拟时校验和算错</td><td>按日志给出的校验和改；频繁出现查接地和屏蔽</td></tr>
+          <tr><td>有 PWI 但 status 一直 1，SQ 0</td><td>新体制波束数确实是 0（天线遮挡）；或 PWI 字段布局和代码假设不同</td><td>打开 <code>CFG_LOG_BD_PERIODIC</code>，看 <code>PWI parsed: old beams …, new beams …</code> 或 <code>PWI fields not as expected</code>；用 <a href="#s3-3">3.3</a> 对字段</td></tr>
+          <tr><td><code>ICP has only N fields, ignored</code></td><td>设备的 ICP 字段数和 3.md 不同</td><td>用 <a href="#s3-3">3.3</a> 打出字段，改 <code>on_icp()</code> 的下标和 <code>argc &lt; 18</code></td></tr>
+          <tr><td>心跳 CD 0 或 maxlength "0"</td><td>卡没有全球权限（字段 17 不是 1）；长度等级不在 1~5；ICP 还没收到</td><td>看 <code>BD: card …</code> 那行；口径见 <a href="#s7-2">7.2</a></td></tr>
+          <tr><td>发了 42212，日志没有 <code>TERM: rx</code></td><td>包没到本机：PC IP 不是 10.9.0.24、端口不对、防火墙</td><td>看 <code>TERM: drop N bytes from IP:端口</code>；查 <code>NET:</code> 日志</td></tr>
+          <tr><td>有 <code>BD: tx: $BDTCQ</code>，10 s 后超时</td><td>模块没回 FKI：线只通了一个方向（本机 TX → 模块 RX 断）、模块没开机报告 / 没卡、回执超过 10 s</td><td>旁听模块 RX；确认模块收到 TCQ；必要时加大 <code>CFG_BD_FKI_TIMEOUT_MS</code></td></tr>
+          <tr><td>模块回了 FKI，还是判超时</td><td>FKI 字段布局不同（指令名不在第 2 字段）</td><td>看 <code>BD: FKI parsed: cmd …</code> 一行，cmd 不是 TCQ 就是布局不同，改 <code>on_fki()</code> 的下标</td></tr>
+          <tr><td>总是 <code>BD send too frequent</code></td><td>两次发报间隔小于服务频度（CD 秒）</td><td>终端按心跳的 CD 控制间隔；或本机做节流（6.4 / 7.4）</td></tr>
+          <tr><td><code>BD serial busy</code></td><td>上一包 1.5 s 内没发完（正常不会发生）；DMA 卡住</td><td>Keil 看 DMA2 Stream6 的 CR.EN 和 NDTR</td></tr>
+          <tr><td>终端显示的中文是乱码</td><td>终端 / SSCOM 不是 UTF-8；TCI 编码类型和实际数据不符</td><td>看 <code>BD: TCI from …, text …:</code> 一行的正文对不对</td></tr>
+          <tr><td>42214 的 msg 是一串 <code>A4…</code> 十六进制</td><td>混编数据还原后超过 2000 B，或格式不对，退回按文本处理</td><td>见 <a href="#s8-2">8.2</a></td></tr>
+          <tr><td>开机日志 <code>reset by watchdog</code></td><td>某任务超过 3 s 没报平安</td><td>复位前一行 <code>WDG: task XX stuck</code>；检查新加的代码有没有长时间阻塞</td></tr>
+          <tr><td>开机日志 <code>reset by software</code> + <code>FATAL: out of heap</code></td><td>RTOS 堆不够（队列、栈加大了）</td><td>按 <a href="#s3-5">3.5</a> 查堆，减回去</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================== 6 新增指令 ============================== -->
+  <section id="s6">
+    <h2>6 新增北斗指令</h2>
+
+    <h3 id="s6-1">6.1 先分类：不同类的指令改法完全不同</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>类</th><th>特点</th><th>例子（3.md 表 2）</th><th>要改的地方</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tag a">A 只收</span></td><td>模块主动输出，本机只解析</td><td>PWI、TCI、IBD、OBD、ACK、ICW、DTI、EPI</td><td>写 <code>on_xxx()</code> + 加进 <code>k_handlers[]</code>（<a href="#s6-3">6.3</a>）</td></tr>
+          <tr><td><span class="tag b">B 查询</span></td><td>本机问、模块直接答，<b>不发射、不占频度、不回 FKI</b></td><td>ICR → ICP / ICG / ICZ</td><td>发送函数 + 发送时机 + 应答的 A 类处理（照 <code>query_card()</code> / <code>on_icp()</code>）</td></tr>
+          <tr><td><span class="tag c">C 入站</span></td><td>本机发、模块<b>发射到卫星</b>：占一次服务频度，回 FKI，之后可能有 IBD、ACK</td><td>TCQ、OFQ、EPQ、QRQ、TBQ、DTQ</td><td><b>必须走"同一时刻只一条在途"的通道</b>，FKI 按指令名匹配（<a href="#s6-4">6.4</a>）</td></tr>
+          <tr><td><span class="tag d">D 终端触发</span></td><td>B / C 类，但由终端发 JSON 触发、结果回终端</td><td>如终端要求"回执查询"</td><td>再加终端协议：消息号、TERM 转发、结果回复（<a href="#s6-5">6.5</a>）</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn"><b>C 类为什么必须串行</b>：FKI 里只有指令名，没有任务号。两条入站指令同时在途时，回来的 FKI 分不清是谁的；而且每次入站都占一次服务频度（CD 秒），并发发出去后面的必然被模块以"频度未到"拒绝。所以所有 C 类指令都要经过 <code>s_pending</code> 这一个在途槽。</div>
+
+    <h3 id="s6-2">6.2 通用清单</h3>
+    <ol class="steps">
+      <li>在 3.md / 设备手册里找到语句格式，确认字段编号；先用 <a href="#s3-3">3.3</a> 的 <code>log_fields</code> 看实际输出。</li>
+      <li>只收：<code>on_xxx()</code> 里 <code>argv[编号 − 1]</code> 取字段，先判 <code>argc</code> 够不够，再 <code>atoi()</code> / 拷贝；加进 <code>k_handlers[]</code>。每秒都输出的语句加进 <code>k_periodic[]</code>。</li>
+      <li>要发：用 <code>bd_build(s_tx, sizeof(s_tx), "CCXXX,%s,%d", …)</code> 组包（自动加 <code>$</code>、校验和、换行），<code>serial_write(SERIAL_BD, s_tx, len, BD_TX_WAIT_MS)</code> 发送，<code>log_tx(s_tx, len)</code> 打日志。<b>只能在 BD 任务里调用</b>（<code>s_tx</code> 和串口都归 BD 任务独占）。</li>
+      <li>发送时机放在主循环末尾按时间判断，不要在 <code>on_xxx()</code> 里直接发（那时还在断句回调里）。</li>
+      <li>要上报心跳：<code>dev_status.h</code> 加字段，加锁写；<code>term_task.c</code> 的 <code>reply_heartbeat()</code> 组进去。心跳格式是和终端约定的接口（1.docx），<b>加字段前先和终端确认</b>；不想动接口可以写进现有的 <code>BD.msg</code>（<a href="#s7-8">7.8</a>）。</li>
+      <li>改完按 <a href="#s9">第 9 节</a> 同步 <code>no_ch</code>、编译、回归。</li>
+    </ol>
+
+    <h3 id="s6-3">6.3 例 1（A 类）：解析 IBD 入站反馈</h3>
+    <p>3.md：入站指令（TCQ / OFQ / EPQ）发出后，模块除了 FKI 还会输出 IBD。字段（表 10）：1 入站周计数、2 入站周内秒、3 入站频点、4 用户地址、5 入站序号、6 收方地址、7 入站类型（0 通信，1 位置报告，2 定时，3 网管）。</p>
+    <p class="file">bd_task.c（加在 on_tci() 之后）</p>
+    <div class="codebox"><pre class="code">/*
+ * 处理 IBD（入站反馈信息，3.md 表 10）：入站指令真正发射出去后模块输出，这里只打日志
+ *   1 入站周计数  2 入站周内秒  3 入站频点  4 用户地址  5 入站序号  6 收方地址  7 入站类型（0 通信）
+ *
+ * 参数：s —— 拆好的语句；字段少于 7 个时忽略
+ * 调用：on_line()，经 k_handlers 表分发
+ */
+static void on_ibd(const bd_sentence_t *s)
+{
+    if (s-&gt;argc &lt; 7) {
+        LOG("BD: IBD has only %d fields, ignored", s-&gt;argc);
+        return;
+    }
+    LOG("BD: IBD parsed: freq %s, from %s, seq %s, to %s, type %s",
+        s-&gt;argv[2], s-&gt;argv[3], s-&gt;argv[4], s-&gt;argv[5], s-&gt;argv[6]);
+}</pre></div>
+    <p class="file">bd_task.c 的 k_handlers[]</p>
+    <div class="codebox"><pre class="code">    { "FKI", on_fki },
+    { "TCI", on_tci },
+<span class="add">+   { "IBD", on_ibd },</span>
+};</pre></div>
+    <p>验证：北斗口发 <code>$BDIBD,2330,345600.123,1,1859836,12,1859906,0*7D</code>，日志应为 <code>BD: IBD parsed: freq 1, from 1859836, seq 12, to 1859906, type 0</code>。</p>
+
+    <h3 id="s6-4">6.4 例 2（C 类）：上电后发开机报告 OFQ</h3>
+    <p>3.md 2.3.2.2："模块正常启动后，在进行正常出入站业务之前，应首先发送开机报告"：<code>$CCOFQ,1,&lt;频点&gt;</code>，模块回 FKI（指令名 OFQ），再输出 IBD，中心站确认后输出 ACK。现在的代码没发（README §10.5），下面是加上的做法。分两步：先把在途槽通用化（以后所有 C 类都用得上），再加 OFQ。</p>
+    <div class="callout warn">代价：开机报告本身占一次服务频度。读卡后立刻发 OFQ，紧接着终端发的第一条短报文会在 CD 秒（如 60 s）内被模块以"频度未到"拒绝。上线前和使用方确认要不要发。</div>
+
+    <h4>第 1 步：在途槽记下指令名、结果要不要回终端</h4>
+    <p class="file">bd_task.c 的 s_pending</p>
+    <div class="codebox"><pre class="code">static struct {
+    bool       active;                      /* true：TCQ 已发出，正在等 FKI */
+<span class="add">+   bool       notify;                      /* true：结果回终端（TCQ）；false：本机自己发的（OFQ），只打日志 */</span>
+<span class="add">+   char       cmd[4];                      /* 在途指令名，FKI 按它匹配，如 "TCQ"、"OFQ" */</span>
+    TickType_t deadline;                    /* 等 FKI 的截止 tick */
+    char       msg_id[APP_ID_LEN];
+    char       taskid[APP_ID_LEN];
+} s_pending;
+<span class="add">+</span>
+<span class="add">+static bool s_ofq_wanted;                  /* 读到卡后要发一次开机报告 */</span></pre></div>
+    <p class="file">bd_task.c 的 start_send() 开头</p>
+    <div class="codebox"><pre class="code">    s_pending.active = true;
+<span class="add">+   s_pending.notify = true;</span>
+<span class="add">+   snprintf(s_pending.cmd, sizeof(s_pending.cmd), "TCQ");</span>
+    snprintf(s_pending.msg_id, sizeof(s_pending.msg_id), "%s", req-&gt;msg_id);</pre></div>
+    <p class="file">bd_task.c 的 finish_send() 开头</p>
+    <div class="codebox"><pre class="code">static void finish_send(int status, const char *err)
+{
+<span class="add">+   if (!s_pending.notify) {                /* 本机自己发的指令：不回终端 */</span>
+<span class="add">+       LOG("BD: %s %s %s", s_pending.cmd, (status == 0) ? "sent" : "failed:", err);</span>
+<span class="add">+       s_pending.active = false;</span>
+<span class="add">+       return;</span>
+<span class="add">+   }</span>
+    s_out.kind    = TEXT_RESULT;</pre></div>
+    <p class="file">bd_task.c 的 on_fki()：按在途指令名匹配，替换原来写死的 "TCQ" 判断</p>
+    <div class="codebox"><pre class="code"><span class="del">-   if (strcmp(s-&gt;argv[1], "TCQ") != 0) {</span>
+<span class="del">-       LOG("BD: FKI is for %s, not TCQ, ignored", s-&gt;argv[1]);</span>
+<span class="del">-       return;</span>
+<span class="del">-   }</span>
+<span class="del">-   if (!s_pending.active) {</span>
+<span class="del">-       LOG("BD: FKI for TCQ but no TCQ is waiting (came after timeout?), ignored");</span>
+<span class="del">-       return;</span>
+<span class="del">-   }</span>
+<span class="add">+   if (!s_pending.active || strcmp(s-&gt;argv[1], s_pending.cmd) != 0) {</span>
+<span class="add">+       LOG("BD: FKI for %s but %s is waiting, ignored", s-&gt;argv[1],</span>
+<span class="add">+           s_pending.active ? s_pending.cmd : "nothing");</span>
+<span class="add">+       return;</span>
+<span class="add">+   }</span></pre></div>
+
+    <h4>第 2 步：加 OFQ 的发送和调度</h4>
+    <p class="file">bd_task.c（加在 start_send() 之后）</p>
+    <div class="codebox"><pre class="code">/*
+ * 发开机报告 $CCOFQ,1,&lt;频点&gt;（3.md 2.3.2.2），进入"等 FKI"状态；结果只打日志，不回终端
+ *
+ * 只发一次（s_ofq_wanted 清掉），失败也不重发，免得反复占用服务频度。
+ * 调用：bd_task() 主循环，没有在途指令且 s_ofq_wanted 时
+ */
+static void start_ofq(void)
+{
+    int len = bd_build(s_tx, sizeof(s_tx), "CCOFQ,1,%d", CFG_BD_TCQ_FREQ);
+
+    s_ofq_wanted     = false;
+    s_pending.active = true;
+    s_pending.notify = false;
+    snprintf(s_pending.cmd, sizeof(s_pending.cmd), "OFQ");
+    if (len &lt; 0 || !serial_write(SERIAL_BD, s_tx, (size_t)len, BD_TX_WAIT_MS)) {
+        finish_send(1, "BD serial busy");
+        return;
+    }
+    s_pending.deadline = xTaskGetTickCount() + pdMS_TO_TICKS(CFG_BD_FKI_TIMEOUT_MS);
+    LOG("BD: power-on report (OFQ)");
+    log_tx(s_tx, len);
+}</pre></div>
+    <p class="file">bd_task.c 的 on_icp()：第一次读到卡时要求发开机报告</p>
+    <div class="codebox"><pre class="code"><span class="add">+   if (!s_card_ok) {</span>
+<span class="add">+       s_ofq_wanted = true;</span>
+<span class="add">+   }</span>
+    s_card_ok = true;</pre></div>
+    <p class="file">bd_task.c 的 bd_task() 主循环第 ④ 步</p>
+    <div class="codebox"><pre class="code"><span class="del">-       if (!s_pending.active &amp;&amp; xQueueReceive(s_queue, &amp;s_req, 0) == pdPASS) {</span>
+<span class="add">+       if (!s_pending.active &amp;&amp; s_ofq_wanted) {</span>
+<span class="add">+           start_ofq();                        /* 开机报告排在短报文前面 */</span>
+<span class="add">+       } else if (!s_pending.active &amp;&amp; xQueueReceive(s_queue, &amp;s_req, 0) == pdPASS) {</span>
+            start_send(&amp;s_req);
+        }</pre></div>
+    <p>验证（<code>bd_sim.py</code> 收到 OFQ 会自动回 FKI）：</p>
+    <div class="codebox"><pre class="code">BD: card 1859836, freq region 60s global 60s, level 3 (cn 322, en 642)
+BD: power-on report (OFQ)
+BD: tx: $CCOFQ,1,2*5B
+BD: rx: $BDFKI,xxxxxx,OFQ,Y,0,0*hh
+BD: FKI parsed: cmd OFQ, result Y, reason 0, wait 0
+BD: OFQ sent</pre></div>
+    <p class="note">EPQ（定位申请）、QRQ（位置 / 回执查询）、DTQ（定时）等其他 C 类照这个模式：写一个 <code>start_xxx()</code>，设 <code>s_pending.cmd</code>，在主循环里找时机调用；结果要回终端就按 6.5 做。</p>
+
+    <h3 id="s6-5">6.5 例 3（D 类）：终端触发一条新指令（以回执查询 QRQ 为例）</h3>
+    <p>3.md 2.3.3.2：<code>$CCQRQ,&lt;对方号码&gt;,5,&lt;频点&gt;</code> 查询发给对方的通信回执，模块回 FKI（QRQ），结果用 QRI 输出（3.md 只有截图，格式待确认）。<b>前提：已按 6.4 第 1 步改好在途槽</b>。</p>
+    <div class="callout warn">终端消息号是和终端软件约定的接口（1.docx 只定义到 42227）。下面的 42290 / 42291 只是示例，<b>必须和终端方商定后再用</b>。</div>
+
+    <p class="file">msg_types.h</p>
+    <div class="codebox"><pre class="code">#define MSG_TT_POWER_REPLY          42227
+<span class="add">+#define MSG_BD_QUERY_SEND           42290   /* 示例：北斗回执查询请求，消息号需和终端约定 */</span>
+<span class="add">+#define MSG_BD_QUERY_REPLY          42291</span></pre></div>
+    <p class="file">app_msg.h：新的消息种类 + 回复用的消息号</p>
+    <div class="codebox"><pre class="code">typedef enum {
+    TEXT_SEND = 0,
+    TEXT_RESULT,
+<span class="del">-   TEXT_RECV</span>
+<span class="add">+   TEXT_RECV,</span>
+<span class="add">+   TEXT_BD_QUERY               /* 终端 -&gt; 北斗：回执查询（QRQ），peer 是被查询方号码 */</span>
+} text_kind_t;
+
+typedef struct {
+    …
+    char        text[APP_TEXT_LEN];
+<span class="add">+   unsigned    reply_type;             /* 回终端用的消息号；0 = 按设备默认（42213 / 42209） */</span>
+} text_msg_t;</pre></div>
+    <p class="file">term_task.c：收请求（加在 forward_text() 之后）</p>
+    <div class="codebox"><pre class="code">/*
+ * 处理北斗回执查询请求：取被查询方号码，交给北斗任务；失败立即回复
+ * 调用：handle_json()
+ */
+static void forward_query(const char *js, const char *msg_id, const char *taskid)
+{
+    s_msg.kind       = TEXT_BD_QUERY;
+    s_msg.dev        = DEV_BD;
+    s_msg.status     = 0;
+    s_msg.reply_type = MSG_BD_QUERY_REPLY;
+    s_msg.text[0]    = '\0';
+    snprintf(s_msg.msg_id, sizeof(s_msg.msg_id), "%s", msg_id);
+    snprintf(s_msg.taskid, sizeof(s_msg.taskid), "%s", taskid);
+
+    if (!json_get_str(js, "target_id", s_msg.peer, sizeof(s_msg.peer)) || !bd_submit(&amp;s_msg)) {
+        reply_status(MSG_BD_QUERY_REPLY, msg_id, taskid, 1, "missing target_id or device busy");
+        return;
+    }
+    LOG("TERM: BD query task %s -&gt; %s, queued", taskid, s_msg.peer);
+}</pre></div>
+    <p class="file">term_task.c：分发、回复用的消息号</p>
+    <div class="codebox"><pre class="code"> /* forward_text() 里：s_msg 是复用的静态变量，要把新字段清掉 */
+    s_msg.status = 0;
+<span class="add">+   s_msg.reply_type = 0;</span>
+
+ /* handle_json() 的 switch 里 */
+    case MSG_BD_MESSAGE_SEND:
+        forward_text(DEV_BD, js, msg_id, taskid);
+        break;
+<span class="add">+</span>
+<span class="add">+   case MSG_BD_QUERY_SEND:</span>
+<span class="add">+       forward_query(js, msg_id, taskid);</span>
+<span class="add">+       break;</span>
+
+ /* handle_device_msg() 里 */
+    if (m-&gt;kind == TEXT_RESULT) {
+<span class="add">+       unsigned type = (m-&gt;reply_type != 0U) ? m-&gt;reply_type : k_dev[m-&gt;dev].result;</span>
+<span class="add">+</span>
+        LOG("TERM: %s result of task %s -&gt; terminal %u: status %d%s%s", k_dev[m-&gt;dev].name, m-&gt;taskid,
+<span class="del">-           k_dev[m-&gt;dev].result, m-&gt;status, (m-&gt;text[0] != '\0') ? ", " : "", m-&gt;text);</span>
+<span class="del">-       reply_status(k_dev[m-&gt;dev].result, m-&gt;msg_id, m-&gt;taskid, m-&gt;status, m-&gt;text);</span>
+<span class="add">+           type, m-&gt;status, (m-&gt;text[0] != '\0') ? ", " : "", m-&gt;text);</span>
+<span class="add">+       reply_status(type, m-&gt;msg_id, m-&gt;taskid, m-&gt;status, m-&gt;text);</span>
+        return;
+    }</pre></div>
+    <p class="file">bd_task.c：在途槽带上回复消息号，按种类分发</p>
+    <div class="codebox"><pre class="code"> /* s_pending 里 */
+    char       cmd[4];
+<span class="add">+   unsigned   reply_type;                  /* 回终端用的消息号，0 = 42213 */</span>
+
+ /* start_send() 开头 */
+    s_pending.notify = true;
+<span class="add">+   s_pending.reply_type = req-&gt;reply_type;</span>
+
+ /* finish_send() 里，组 s_out 时 */
+    s_out.status  = status;
+<span class="add">+   s_out.reply_type = s_pending.reply_type;</span>
+
+ /* on_tci() 里，组 s_out 时（s_out 和 finish_send 共用，要清掉） */
+    s_out.status    = 0;
+<span class="add">+   s_out.reply_type = 0;</span>
+
+ /* bd_task() 主循环第 ④ 步 */
+        } else if (!s_pending.active &amp;&amp; xQueueReceive(s_queue, &amp;s_req, 0) == pdPASS) {
+<span class="del">-           start_send(&amp;s_req);</span>
+<span class="add">+           if (s_req.kind == TEXT_BD_QUERY) {</span>
+<span class="add">+               start_query(&amp;s_req);</span>
+<span class="add">+           } else {</span>
+<span class="add">+               start_send(&amp;s_req);</span>
+<span class="add">+           }</span>
+        }</pre></div>
+    <p class="file">bd_task.c（加在 start_send() 之后）</p>
+    <div class="codebox"><pre class="code">/*
+ * 发回执查询 $CCQRQ,&lt;对方号码&gt;,5,&lt;频点&gt;（3.md 2.3.3.2），进入"等 FKI"状态，FKI 结果回终端
+ * 调用：bd_task() 主循环，从 BD 队列取到 TEXT_BD_QUERY 时
+ */
+static void start_query(const text_msg_t *req)
+{
+    int len = -1;
+
+    s_pending.active     = true;
+    s_pending.notify     = true;
+    s_pending.reply_type = req-&gt;reply_type;
+    snprintf(s_pending.cmd, sizeof(s_pending.cmd), "QRQ");
+    snprintf(s_pending.msg_id, sizeof(s_pending.msg_id), "%s", req-&gt;msg_id);
+    snprintf(s_pending.taskid, sizeof(s_pending.taskid), "%s", req-&gt;taskid);
+
+    if (is_digits(req-&gt;peer)) {
+        len = bd_build(s_tx, sizeof(s_tx), "CCQRQ,%s,5,%d", req-&gt;peer, CFG_BD_TCQ_FREQ);
+    }
+    if (len &lt; 0) {
+        finish_send(1, "invalid target_id");
+        return;
+    }
+    if (!serial_write(SERIAL_BD, s_tx, (size_t)len, BD_TX_WAIT_MS)) {
+        finish_send(1, "BD serial busy");
+        return;
+    }
+    s_pending.deadline = xTaskGetTickCount() + pdMS_TO_TICKS(CFG_BD_FKI_TIMEOUT_MS);
+    LOG("BD: QRQ task %s -&gt; %s", req-&gt;taskid, req-&gt;peer);
+    log_tx(s_tx, len);
+}</pre></div>
+    <p>查询结果 QRI 的格式 3.md 没给（只有截图）。先按 <a href="#s3-3">3.3</a> 加 <code>{ "QRI", log_fields }</code> 看实测字段，确定格式后再写 <code>on_qri()</code>，把结果做成 <code>TEXT_RECV</code> 或新的上报消息交给终端（上报消息号同样要和终端约定）。</p>
+    <p class="note">验证：终端发 <code>{"msg_type":"42290","msg_id":"…","timestamp":…,"content":{"taskid":"…","target_id":"1859906"}}</code>（<code>term_sim.py</code> 用 <code>raw</code> 命令），日志应出现 <code>BD: tx: $CCQRQ,1859906,5,2*hh</code>；北斗口回 <code>$BDFKI,…,QRQ,Y,0,0</code> 后终端收到 42291 status 0。</p>
+  </section>
+
+  <!-- ============================== 7 常见修改 ============================== -->
+  <section id="s7">
+    <h2>7 常见修改</h2>
+
+    <h3 id="s7-1">7.1 现场参数（只改 <code>app_config.h</code>）</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>参数</th><th>默认</th><th>改的时候注意</th></tr></thead>
+        <tbody>
+          <tr><td><code>CFG_BD_BAUDRATE</code></td><td>38400</td><td>要和模块一致。改高后 1 s 的接收数据可能超过 4 KB 环形缓冲，按比例加大 <code>serial.c</code> 的 <code>BD_RX_SIZE</code></td></tr>
+          <tr><td><code>CFG_BD_TCQ_FREQ</code></td><td>2</td><td>1~5 对应 Lf0~Lf2、Lf4。3.md：Lf0 入站不超过 120 汉字，Lf1 / Lf2 不超过 1000 汉字。改了会同时影响 6.4 / 6.5 里的 OFQ、QRQ</td></tr>
+          <tr><td><code>CFG_BD_TCQ_CONFIRM</code></td><td>2</td><td>1 不需确认，2 需确认（中心站确认后模块出 ACK）</td></tr>
+          <tr><td><code>CFG_BD_FKI_TIMEOUT_MS</code></td><td>10000</td><td>要大于模块最慢的回执时间；太长则失败时终端等得久</td></tr>
+          <tr><td><code>CFG_BD_ICR_RETRY_MS</code></td><td>5000</td><td>读卡重发间隔</td></tr>
+          <tr><td><code>CFG_BD_SIGNAL_STALE_MS</code></td><td>5000</td><td>PWI / GSS 多久没更新就不算数；模块输出周期不是 1 s 时要大于它的周期</td></tr>
+          <tr><td><code>CFG_BD_LINK_TIMEOUT_MS</code></td><td>5000</td><td>多久没有有效语句判异常；同上</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 id="s7-2">7.2 CD / maxlength 的上报口径</h3>
+    <p>两个频度、两种字数都已经存在 <code>bd.card</code> 里，改上报口径只改 <code>on_icp()</code> 里两行（<code>bd_task.c:427</code>）：</p>
+    <div class="codebox"><pre class="code">    st-&gt;bd.card   = card;
+<span class="del">-   st-&gt;bd.cd     = card.freq_global;       /* 暂以全球短报文服务频度上传 */</span>
+<span class="del">-   st-&gt;bd.maxlen = card.len_cn;            /* 暂以汉字上限上传 */</span>
+<span class="add">+   st-&gt;bd.cd     = card.freq_region;       /* 改成上报区域频度 */</span>
+<span class="add">+   st-&gt;bd.maxlen = card.len_en;            /* 改成上报字符数 */</span></pre></div>
+    <p class="note">也可以按权限自动选：<code>st->bd.cd = (card.freq_global != 0) ? card.freq_global : card.freq_region;</code></p>
+
+    <h3 id="s7-3">7.3 SQ 算法</h3>
+    <p><b>改折算表</b>：<code>sig_level()</code>（<code>bd_task.c:630</code>）现在是 <code>min(数量, 4)</code>。比如想让"3~4 个波束才算 3 级、5 个以上才 4 级"：</p>
+    <div class="codebox"><pre class="code">static int sig_level(const sig_src_t *src, TickType_t now)
+{
+<span class="add">+   static const uint8_t k_map[] = { 0, 1, 2, 3, 3, 4 };    /* 下标 = 数量，5 个及以上为 4 级 */</span>
+<span class="add">+</span>
+    if (!src-&gt;seen || now - src-&gt;at &gt; pdMS_TO_TICKS(CFG_BD_SIGNAL_STALE_MS)) {
+        return -1;
+    }
+<span class="del">-   return (src-&gt;count &gt; SQ_MAX) ? SQ_MAX : src-&gt;count;</span>
+<span class="add">+   return (src-&gt;count &gt;= sizeof(k_map)) ? SQ_MAX : k_map[src-&gt;count];</span>
+}</pre></div>
+    <p class="note">两路共用同一张表；要分开就给 <code>sig_level()</code> 加一个表参数。</p>
+    <p><b>只数强波束</b>：3.md 说载噪比 ≥ 46 dB 时通信成功率较高，可以只数达标的波束。<code>on_pwi()</code> 里新体制每个波束的字段是"编号, S2C_d 载噪比, S2C_p 载噪比, 第 4 个"（按 111.pdf 截图的 4 字段布局；设备如果是 3.md 表 3 的 3 字段，把 4 改成 3）：</p>
+    <div class="codebox"><pre class="code"><span class="add">+#define BD_CN0_GOOD         46      /* 3.md：载噪比 &gt;= 46dB 时通信成功率较高 */</span>
+ …
+    new_beams = atoi(s-&gt;argv[idx]);
+    LOG_PERIODIC("BD: PWI parsed: old beams %d, new beams %d", old_beams, new_beams);
+    if (new_beams &gt;= 0 &amp;&amp; new_beams &lt;= BD_BEAMS_MAX) {
+<span class="del">-       sig_update(&amp;s_beams, new_beams);</span>
+<span class="add">+       int good = 0;</span>
+<span class="add">+       int k;</span>
+<span class="add">+</span>
+<span class="add">+       for (k = 0; k &lt; new_beams &amp;&amp; idx + 2 + k * 4 &lt; s-&gt;argc; k++) {</span>
+<span class="add">+           if (atoi(s-&gt;argv[idx + 2 + k * 4]) &gt;= BD_CN0_GOOD) {     /* 第 k 个波束的 S2C_d 载噪比 */</span>
+<span class="add">+               good++;</span>
+<span class="add">+           }</span>
+<span class="add">+       }</span>
+<span class="add">+       sig_update(&amp;s_beams, good);</span>
+    }</pre></div>
+    <p class="note">用测试语句核对下标：<code>$BDPWI,012430.31,00,03,11,45,45,00,16,49,49,00,21,46,46,00*4B</code> 中 idx = 2，三个波束的 S2C_d 依次在 argv[4] = 45、argv[8] = 49、argv[12] = 46，达标 2 个。</p>
+
+    <h3 id="s7-4">7.4 FKI 失败原因</h3>
+    <p>手册只给了"原因 1 = 频度未到"的示例；design.txt 提到电量不足时 FKI 第 4 字段（失败原因）为 2。实测拿到新的代码后在 <code>on_fki()</code> 里补：</p>
+    <div class="codebox"><pre class="code">    if (strcmp(field(s, 3), "1") == 0) {
+        snprintf(err, sizeof(err), "BD send too frequent, wait %ss", field(s, 4));
+<span class="add">+   } else if (strcmp(field(s, 3), "2") == 0) {</span>
+<span class="add">+       snprintf(err, sizeof(err), "BD low battery");             /* design.txt，待实测 */</span>
+    } else {
+        snprintf(err, sizeof(err), "BD rejected, FKI reason %s, %s", field(s, 3), field(s, 4));
+    }</pre></div>
+    <p class="note">errormsg 会原样显示在终端上，用终端方能看懂的文字。<code>err</code> 只有 64 字节。</p>
+
+    <h3 id="s7-5">7.5 编码方式</h3>
+    <p>TCQ 支持 1 汉字、2 代码、3 混编（另有 4 / 5 压缩）。代码固定用 <b>3 混编</b>（<code>BD_CODE_MIXED</code>），原因：</p>
+    <ul class="tight">
+      <li>汉字方式（1）把 GBK 字节直接放进语句：正文里有半角逗号、<code>*</code>、<code>$</code> 时会破坏语句格式；</li>
+      <li>代码方式（2）只能发 0~9、A~F；</li>
+      <li>混编（3）把一切都变成十六进制文本，什么内容都能安全发送。</li>
+    </ul>
+    <p>确需改用其他方式时，改 <code>start_send()</code> 里的编码一步和 <code>BD_CODE_MIXED</code>，并自行过滤正文里的 <code>, * $ \r \n</code>。收报方向 <code>on_tci()</code> 三种都已支持，不用改。</p>
+
+    <h3 id="s7-6">7.6 TCQ 最后一个字段</h3>
+    <p>3.md 表 9：最后一个字段是"报文通信频度（秒），0 为单次"。代码写死 <code>0</code>。<b>不要改成非 0</b>，否则模块会按这个间隔反复发射同一条报文。</p>
+
+    <h3 id="s7-7">7.7 队列深度</h3>
+    <p><code>bd_task.c</code> 的 <code>BD_QUEUE_LEN</code>（默认 2）。每加一项多占 <code>sizeof(text_msg_t)</code> ≈ 3.2 KB 的 RTOS 堆（在 CCM，固定 64 KB）。服务频度通常几十秒，排太多也发不出去。改大后按 <a href="#s3-5">3.5</a> 看 <code>min ever</code>。</p>
+
+    <h3 id="s7-8">7.8 把信息放进心跳的 <code>BD.msg</code></h3>
+    <p>心跳里 <code>BD.msg</code> 现在恒为空，是现成的不改接口就能带信息的位置（32 字节）。例：把最近一次发送失败的原因放进去，成功时清空。</p>
+    <p class="file">bd_task.c（加在 set_task_state() 之后）</p>
+    <div class="codebox"><pre class="code">/* 写心跳里的 BD.msg（最多 31 字节，超出截断）。调用：finish_send() */
+static void set_bd_msg(const char *text)
+{
+    dev_status_t *st = dev_status_lock();
+
+    snprintf(st-&gt;bd.msg, sizeof(st-&gt;bd.msg), "%s", text);
+    dev_status_unlock();
+}</pre></div>
+    <p class="file">bd_task.c 的 finish_send()</p>
+    <div class="codebox"><pre class="code">    LOG("BD: task %s %s %s", s_pending.taskid, (status == 0) ? "sent" : "failed:", err);
+<span class="add">+   set_bd_msg(err);                        /* 成功时 err 是空串，等于清空 */</span>
+    s_pending.active = false;</pre></div>
+
+    <h3 id="s7-9">7.9 运行中重新读卡</h3>
+    <p>现在卡信息上电只读一次。模块掉电重启、换卡后要重启本机才会更新。改成"北斗从异常恢复时重新读卡"：</p>
+    <p class="file">bd_task.c 的 update_signal()，dev_status_unlock() 之后</p>
+    <div class="codebox"><pre class="code">    dev_status_unlock();
+
+<span class="add">+   if (old_status == BD_FAULT &amp;&amp; status != BD_FAULT) {</span>
+<span class="add">+       s_card_ok = false;                  /* 模块断线后恢复（可能重启或换了卡）：重新读卡 */</span>
+<span class="add">+   }</span>
+    if (old_status != status) {</pre></div>
+    <p class="note"><code>next_icr</code> 早已过期，下一圈就会发 ICR。如果按 6.4 加了 OFQ，恢复后也会重新发开机报告（模块重启后本来就该再报一次）。</p>
+
+    <h3 id="s7-10">7.10 换北斗串口 / 引脚</h3>
+    <p>只改 <code>serial.c</code> 的 <code>k_hw[SERIAL_BD]</code>：USART、时钟函数和时钟位、中断号、GPIO 端口和时钟、复用号、收发引脚和引脚源号、DMA 时钟、收发数据流、通道号、两组 DMA 标志（数据流编号要对应）。DMA 映射查 RM0090 表 42 / 43；同时把中断函数名改成新 USART 的（如 <code>USART6_IRQHandler</code>）。不能用的引脚：PA2（以太网 MDIO）、PD8 / PD9 等 FSMC 线，见 README 第 0 节。</p>
+  </section>
+
+  <!-- ============================== 8 已知问题修法 ============================== -->
+  <section id="s8">
+    <h2>8 已知问题与修法</h2>
+    <p class="note">读代码时发现的几处，按影响排序。都还没改，需要时照下面的改法动手。</p>
+
+    <h3 id="s8-1">8.1 迟到的 FKI 可能被算到下一条头上</h3>
+    <p><b>现象</b>：A 等 FKI 超时（10 s），同一圈 B 立刻发出；随后 A 的 FKI 才到，被当成 B 的结果回给终端；B 自己的 FKI 再到时已没有在途，被丢弃。<b>原因</b>：FKI 没有任务号，<code>on_fki()</code> 只看有没有在途（<code>bd_task.c:477</code>）。正常模块约 1 s 回执，只在模块响应异常慢时出现。</p>
+    <p><b>修法</b>：超时后先暂停发送一段时间，让迟到的回执落在"没有在途"的窗口里被丢掉。</p>
+    <p class="file">app_config.h</p>
+    <div class="codebox"><pre class="code">#define CFG_BD_FKI_TIMEOUT_MS   10000   /* TCQ 发完后等北斗回执（FKI）的最长时间（串口发送时间另外加上） */
+<span class="add">+#define CFG_BD_FKI_GRACE_MS     5000    /* FKI 超时后暂停发送这么久，让迟到的回执落空，不串到下一条 */</span></pre></div>
+    <p class="file">bd_task.c</p>
+    <div class="codebox"><pre class="code"><span class="add">+static bool       s_hold;                   /* FKI 超时后暂停发送 */</span>
+<span class="add">+static TickType_t s_hold_until;</span>
+ …
+        if (s_pending.active &amp;&amp; time_reached(now, s_pending.deadline)) {
+            finish_send(1, "BD no response (FKI timeout)");
+<span class="add">+           s_hold       = true;</span>
+<span class="add">+           s_hold_until = now + pdMS_TO_TICKS(CFG_BD_FKI_GRACE_MS);</span>
+        }
+<span class="del">-       if (!s_pending.active &amp;&amp; xQueueReceive(s_queue, &amp;s_req, 0) == pdPASS) {</span>
+<span class="add">+       if (s_hold &amp;&amp; time_reached(now, s_hold_until)) {</span>
+<span class="add">+           s_hold = false;</span>
+<span class="add">+       }</span>
+<span class="add">+       if (!s_pending.active &amp;&amp; !s_hold &amp;&amp; xQueueReceive(s_queue, &amp;s_req, 0) == pdPASS) {</span>
+            start_send(&amp;s_req);
+        }</pre></div>
+    <div class="callout warn">用 <code>s_hold</code> 标志，而不是只存一个 <code>s_send_after</code> 时刻初值为 0：<code>time_reached(now, 0)</code> 在开机 24.8 天后 tick 过半时会变成 false，发送会被卡住将近 25 天。<code>next_icr</code> / <code>next_sq</code> 初值为 0 没问题，是因为第一圈就被改成了当前时刻附近。</div>
+    <p class="note">验证：用例 12 → 13 改成"超时后 3 s 内回 FKI，同时终端已排着下一条"，下一条应在 5 s 暂停结束后才发出，迟到的 FKI 打 <code>no TCQ is waiting</code>。</p>
+
+    <h3 id="s8-2">8.2 TCI 混编数据过长时上报十六进制原文</h3>
+    <p><b>现象</b>：混编数据还原后超过 2000 B，<code>bd_mixed_decode()</code> 返回 −1，代码退回"当文本处理"，终端收到一串 <code>A4…</code>（<code>bd_task.c:521</code>）。退回文本本是为了兼容格式不规范的数据，过长的情况应单独处理。</p>
+    <div class="codebox"><pre class="code">    if (atoi(s-&gt;argv[4]) == BD_CODE_MIXED) {
+        n = bd_mixed_decode(data, s_gbk, sizeof(s_gbk));
+<span class="add">+       if (n &lt; 0 &amp;&amp; strlen(data) &gt; 2U + sizeof(s_gbk) * 2U) {</span>
+<span class="add">+           LOG("BD: TCI mixed data longer than %u bytes GBK, dropped", (unsigned)sizeof(s_gbk));</span>
+<span class="add">+           return;</span>
+<span class="add">+       }</span>
+        if (n &lt; 0) {</pre></div>
+    <p class="note">正常卡等级最高 5 级约 2000 B GBK，实际很难触发。想保留内容可以改成截断解码，但要同时改 <code>bd_mixed_decode()</code> 的返回约定。</p>
+
+    <h3 id="s8-3">8.3 超长语句静默丢弃</h3>
+    <p>超过 4351 B 的语句在断句器里直接丢掉，没有任何日志（<code>bd_proto.c:104</code>）。<code>bd_proto.c</code> 是纯函数模块，不打日志，所以加一个计数，让 BD 任务打：</p>
+    <p class="file">bd_proto.h</p>
+    <div class="codebox"><pre class="code">typedef struct {
+    char   line[BD_LINE_MAX];
+    size_t len;
+<span class="add">+   uint32_t dropped;           /* 因超长被丢弃的语句数（只增不减） */</span>
+} bd_framer_t;</pre></div>
+    <p class="file">bd_proto.c 的 bd_framer_feed()</p>
+    <div class="codebox"><pre class="code">        if (f-&gt;len + 1U &gt;= sizeof(f-&gt;line)) {
+            f-&gt;len = 0;                     /* 超长，整条丢掉 */
+<span class="add">+           f-&gt;dropped++;</span>
+            continue;
+        }</pre></div>
+    <p class="file">bd_task.c 的 bd_task() 主循环，bd_framer_feed() 之后</p>
+    <div class="codebox"><pre class="code"><span class="add">+static uint32_t s_dropped_seen;            /* 文件开头的静态变量区 */</span>
+ …
+        if (n &gt; 0U) {
+            s_rx_bytes += (uint32_t)n;
+            bd_framer_feed(&amp;s_framer, s_rx, n, on_line);
+<span class="add">+           if (s_framer.dropped != s_dropped_seen) {</span>
+<span class="add">+               LOG("BD: %lu over-long sentence(s) dropped (&gt; %u bytes)",</span>
+<span class="add">+                   (unsigned long)(s_framer.dropped - s_dropped_seen), (unsigned)(BD_LINE_MAX - 1));</span>
+<span class="add">+               s_dropped_seen = s_framer.dropped;</span>
+<span class="add">+           }</span>
+        }</pre></div>
+
+    <h3 id="s8-4">8.4 ICR 没发出去也打 "query card"</h3>
+    <p><code>query_card()</code> 不看 <code>serial_write()</code> 的返回值（<code>bd_task.c:613</code>）。5 s 后会重发，影响只是日志不准：</p>
+    <div class="codebox"><pre class="code">static void query_card(void)
+{
+    int len = bd_build(s_tx, sizeof(s_tx), "CCICR,0,00");
+
+<span class="del">-   if (len &gt; 0) {</span>
+<span class="del">-       serial_write(SERIAL_BD, s_tx, (size_t)len, BD_TX_WAIT_MS);</span>
+<span class="del">-   }</span>
+<span class="add">+   if (len &lt;= 0 || !serial_write(SERIAL_BD, s_tx, (size_t)len, BD_TX_WAIT_MS)) {</span>
+<span class="add">+       LOG("BD: query card (ICR) not sent, serial busy");</span>
+<span class="add">+       return;</span>
+<span class="add">+   }</span>
+    LOG("BD: query card (ICR)");
+    log_tx(s_tx, len);
+}</pre></div>
+
+    <h3 id="s8-5">8.5 卡信息只读一次</h3>
+    <p>见 <a href="#s7-9">7.9</a>。</p>
+
+    <h3 id="s8-6">8.6 文档里提到的 <code>bd_fki</code> 代码里没有</h3>
+    <p><code>北斗协议语句详解.html</code> 的 FKI 一节写"由此维护 bd_fki（RD 发送间隔 / 剩余空闲时间）"，代码里没有这个变量：FKI 的等待秒数只拼进 errormsg，本机不按 CD 主动节流，频度未到时靠模块拒绝。要么删掉文档里这句，要么真做节流（收到 <code>N,1,秒数</code> 后在这段时间内不从队列取请求，做法同 8.1 的 <code>s_hold</code>）。</p>
+
+    <h3 id="s8-7">8.7 没有校验和的语句不校验就接受</h3>
+    <p><code>bd_parse()</code> 对没有 <code>*</code> 的语句不校验（<code>bd_proto.c:172</code>），这类语句同样刷新"链路活着"。确认设备每条语句都带校验和后，可以改成严格模式：</p>
+    <div class="codebox"><pre class="code">    star = strrchr(line, '*');
+<span class="add">+   if (star == NULL) {</span>
+<span class="add">+       return false;                       /* 严格模式：没有校验和的语句一律不收 */</span>
+<span class="add">+   }</span>
+    if (star != NULL) {</pre></div>
+
+    <h3 id="s8-8">8.8 终端用 <code>\uXXXX</code> 发满 1000 汉字可能被截断</h3>
+    <p>每个汉字转义后 6 字节，1000 字约 6000 B，加报文头约 6.1~6.2 KB，接近或超过 <code>TERM_RX_MAX</code>（6144，<code>term_task.c:44</code>），会报 <code>missing msg or msg too long</code>。终端直接发 UTF-8（约 3 KB）没问题。需要支持时把 <code>TERM_RX_MAX</code> 加到 8192（主 SRAM 多 2 KB，当前剩约 23 KB）。</p>
+  </section>
+
+  <!-- ============================== 9 改完之后 ============================== -->
+  <section id="s9">
+    <h2>9 改完之后</h2>
+    <ol class="steps">
+      <li><b>同步 no_ch</b>：<code>no_ch</code> 是同一份代码去掉注释的版本。先在 <code>ye_ch</code> 改好，再把同样的代码改到 <code>no_ch</code>（不带注释），最后用 <code>cmp_nocomment.py</code>（<a href="#sa-3">附录</a>）比对，输出"两份代码一致"才算同步完。</li>
+      <li><b>编译</b>：Keil 打开 <code>Projects/CommGateway/MDK-ARM/CommGateway.uvprojx</code>，F7，保持 0 error、0 warning。看 <code>MDK-ARM/list/CommGateway.map</code> 的主 SRAM 用量（现在 104.4 KB / 128 KB）。</li>
+      <li><b>量栈和堆</b>：加了处理函数、改了队列深度的，按 <a href="#s3-5">3.5</a> 跑一遍。</li>
+      <li><b>回归</b>：按 <a href="#s4">第 4 节</a> 用例跑一遍，至少 3、6、8、9、10、12、17、20。</li>
+      <li><b>更新文档</b>：README 第 6、7 节（北斗状态、短报文）、<code>docs/</code> 里对应的图和本文。</li>
+      <li><b>发布前</b>：<code>CFG_LOG_BD_RAW</code>、<code>CFG_LOG_TERM_RAW</code> 视情况关掉（日志是阻塞发送，最长报文收发解析各打一遍约 0.5 s）。</li>
+    </ol>
+  </section>
+
+  <!-- ============================== 附录 ============================== -->
+  <section id="sa">
+    <h2>附录 PC 端工具脚本</h2>
+    <p class="note">Python 3。三个脚本已放在 <code>ye_ch/tools/</code> 下，也可以点右上角"复制"另存。<code>bd_sim.py</code> 需要先 <code>pip install pyserial</code>；另外两个只用标准库。</p>
+
+    <h3 id="sa-1">A.1 bd_sim.py —— 北斗模块模拟器</h3>
+    <p class="note">接法见 <a href="#s2-3">2.3</a> 的 B。<code>python bd_sim.py COM5</code>，命令见脚本开头的说明。</p>
+    <div class="codebox"><pre class="code">#!/usr/bin/env python3
+"""
+bd_sim.py —— 北斗模块模拟器（联调用，没有真北斗模块时代替它）
+
+接线：PC 的 USB-TTL（3.3V）或 USB-RS422 接本机北斗口 USART6（PC6 发 / PC7 收），38400 8N1。
+依赖：pip install pyserial
+用法：python bd_sim.py COM5
+
+自动行为：
+  每秒输出一条 PWI（新体制波束数 = beams）和一条 GSS（可用卫星数 = sats）
+  收到 $CCICR -&gt; 回 ICP（卡号 1859836，区域 / 全球频度 60 s，长度等级 3）
+  收到 TCQ    -&gt; 打印解出的正文，按 fki 模式 1 s 后回 FKI
+  收到 OFQ    -&gt; 1 s 后回 FKI（OFQ,Y）
+命令（回车执行）：
+  sig &lt;beams&gt; &lt;sats&gt;   改每秒输出的波束数 / 卫星数（sig 0 0 -&gt; 本机判离线）
+  silent / talk        停止 / 恢复每秒输出（silent 5 s 后本机判异常）
+  fki y|n1|n3|none     对 TCQ 的回执：成功 / 频度未到 / 其他原因 / 不回（测超时）
+  tci &lt;发信方&gt; &lt;正文&gt;  发一条混编 TCI 给本机
+  raw &lt;语句&gt;           发任意语句，自动补 $、校验和、换行，如 raw BDFKI,033000,OFQ,Y,0,0
+  show                 是否打印每秒的 PWI / GSS（默认不打印）
+  q                    退出
+"""
+import sys
+import threading
+import time
+
+CARD_ID = "1859836"     # ICP 里的本机卡号，TCI 的收信方
+ICP_BODY = "BDICP," + CARD_ID + ",0,0,3,0,N,3,N,1,0,0,3,1,60,3,1,1,60,1,0,0,0,0"
+
+
+def cks(raw):
+    """校验和：'$' 和 '*' 之间所有字节的异或"""
+    s = 0
+    for b in raw:
+        s ^= b
+    return s
+
+
+def build(body):
+    """'BDFKI,...' -&gt; b'$BDFKI,...*hh\\r\\n'；正文按 GBK 编码，可以含汉字"""
+    body = body.strip().lstrip("$").split("*")[0]
+    raw = body.encode("gbk")
+    return b"$" + raw + b"*%02X\r\n" % cks(raw)
+
+
+def hhmmss():
+    return time.strftime("%H%M%S", time.gmtime())
+
+
+class Sim:
+    def __init__(self, port):
+        self.port = port
+        self.lock = threading.Lock()
+        self.beams = 3
+        self.sats = 2
+        self.talk = True
+        self.show = False
+        self.fki = "y"
+        self.buf = b""
+
+    def send(self, body, quiet=False):
+        data = build(body)
+        with self.lock:
+            self.port.write(data)
+        if not quiet:
+            print("&gt;&gt;", data.decode("gbk", "replace").rstrip())
+
+    def later(self, sec, body):
+        t = threading.Timer(sec, self.send, args=(body,))
+        t.daemon = True
+        t.start()
+
+    def periodic(self):
+        """每秒调用一次：PWI + GSS"""
+        if not self.talk:
+            return
+        pwi = "BDPWI,%s.00,00,%02d" % (hhmmss(), self.beams)
+        pwi += "".join(",%02d,47,47,00" % (11 + i) for i in range(self.beams))
+        gss = "BDGSS,%02d,%02d" % (self.sats, 20 if self.sats else 0)
+        gss += "".join(",%02d,40,45,180" % (20 + i) for i in range(self.sats))
+        self.send(pwi, quiet=not self.show)
+        self.send(gss, quiet=not self.show)
+
+    def feed(self, data):
+        """本机发来的字节流，按换行切句"""
+        self.buf += data
+        while b"\n" in self.buf:
+            line, self.buf = self.buf.split(b"\n", 1)
+            self.on_line(line.strip().decode("gbk", "replace"))
+
+    def on_line(self, line):
+        if not line.startswith("$"):
+            return
+        print("&lt;&lt;", line)
+        body, _, given = line[1:].partition("*")
+        if given and given[:2].upper() != "%02X" % cks(body.encode("gbk")):
+            print("   ! 校验和不对，应为 *%02X" % cks(body.encode("gbk")))
+        f = body.split(",")
+        kind = f[0][-3:]
+        if kind == "ICR":
+            self.later(0.2, ICP_BODY)
+        elif kind == "TCQ" and len(f) &gt;= 6:
+            if f[4] == "3" and f[5][:2].upper() == "A4":
+                try:
+                    text = bytes.fromhex(f[5][2:]).decode("gbk", "replace")
+                except ValueError:
+                    text = "(混编数据不是十六进制)"
+            else:
+                text = f[5]
+            print("   TCQ -&gt; %s, 编码类型 %s, 正文: %s" % (f[1], f[4], text))
+            reply = {"y": "TCQ,Y,0,0", "n1": "TCQ,N,1,7", "n3": "TCQ,N,3,0"}.get(self.fki)
+            if reply:
+                self.later(1.0, "BDFKI,%s,%s" % (hhmmss(), reply))
+            else:
+                print("   (fki none：不回执，本机约 10 s 后判超时)")
+        elif kind == "OFQ":
+            self.later(1.0, "BDFKI,%s,OFQ,Y,0,0" % hhmmss())
+
+    def command(self, cmd):
+        """处理一行命令，返回 False 表示退出"""
+        parts = cmd.strip().split(maxsplit=2)
+        if not parts:
+            return True
+        op = parts[0].lower()
+        if op == "q":
+            return False
+        if op == "sig" and len(parts) &gt;= 3:
+            self.beams, self.sats = int(parts[1]), int(parts[2])
+            print("   每秒输出：波束 %d，卫星 %d" % (self.beams, self.sats))
+        elif op in ("silent", "talk"):
+            self.talk = (op == "talk")
+            print("   每秒输出：%s" % ("恢复" if self.talk else "停止"))
+        elif op == "show":
+            self.show = not self.show
+            print("   打印每秒输出：%s" % ("开" if self.show else "关"))
+        elif op == "fki" and len(parts) &gt;= 2:
+            self.fki = parts[1].lower()
+            print("   TCQ 回执模式：%s" % self.fki)
+        elif op == "tci" and len(parts) &gt;= 3:
+            data = "A4" + parts[2].encode("gbk").hex().upper()
+            self.send("BDTCI,%s,%s,2,%s.00,3,0,%s" % (parts[1], CARD_ID, hhmmss(), data))
+        elif op == "raw" and len(parts) &gt;= 2:
+            self.send(cmd.strip()[3:].strip())
+        else:
+            print(__doc__)
+        return True
+
+
+def main():
+    import serial    # pip install pyserial
+
+    if len(sys.argv) &lt; 2:
+        print(__doc__)
+        return
+    port = serial.Serial(sys.argv[1], 38400, timeout=0.05)
+    sim = Sim(port)
+    print("北斗模拟器已打开 %s，38400 8N1。输入 help 看命令。" % sys.argv[1])
+
+    def reader():
+        while True:
+            data = port.read(256)
+            if data:
+                sim.feed(data)
+
+    def ticker():
+        while True:
+            sim.periodic()
+            time.sleep(1.0)
+
+    threading.Thread(target=reader, daemon=True).start()
+    threading.Thread(target=ticker, daemon=True).start()
+    try:
+        while sim.command(input()):
+            pass
+    except (KeyboardInterrupt, EOFError):
+        pass
+    port.close()
+
+
+if __name__ == "__main__":
+    main()</pre></div>
+
+    <h3 id="sa-2">A.2 term_sim.py —— 终端模拟器</h3>
+    <p class="note">PC 网卡设 10.9.0.24。<code>python term_sim.py</code> 进交互模式；<code>python term_sim.py bd 4217580 12一二</code> 发一条就退出。</p>
+    <div class="codebox"><pre class="code">#!/usr/bin/env python3
+"""
+term_sim.py —— 终端模拟器（扮演"通信综合管理软件"，经 UDP 和本机交互）
+
+PC 网卡设成 10.9.0.24/24（= app_config.h 的 CFG_TERM_IP）；本机的回复固定发到 10.9.0.24:5000，
+所以本脚本绑定 5000 端口（SSCOM 等占着 5000 时先关掉）。
+用法：
+  python term_sim.py                      交互模式，命令：
+      hb                                  发 42201 心跳，打印 42202 里的北斗状态
+      bd &lt;号码&gt; &lt;正文&gt;                    发 42212 北斗短报文，等 42213
+      raw &lt;json&gt;                          原样发一段 JSON
+      q                                   退出
+  python term_sim.py hb                   只发一次心跳，等 3 s 后退出
+  python term_sim.py bd 4217580 12一二    只发一条短报文，等 15 s 后退出
+  --board IP:端口                         本机地址，默认 10.9.0.57:4220
+收到 42214（北斗收报）时自动回 42215 确认。
+"""
+import json
+import socket
+import sys
+import threading
+import time
+import uuid
+
+BOARD = ("10.9.0.57", 4220)    # 本机 CFG_LOCAL_IP : CFG_TERM_LOCAL_PORT
+LOCAL_PORT = 5000              # CFG_TERM_PORT
+
+
+def make(msg_type, content, msg_id=None):
+    return {"msg_id": msg_id or str(uuid.uuid4()), "timestamp": int(time.time() * 1000),
+            "msg_type": str(msg_type), "content": content}
+
+
+def send(sock, obj):
+    data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+    sock.sendto(data, BOARD)
+    print("&gt;&gt;&gt; %s" % data.decode("utf-8"))
+
+
+def show(sock, obj):
+    t = str(obj.get("msg_type"))
+    c = obj.get("content") or {}
+    if t == "42202":
+        bd = (c.get("Config") or {}).get("BD") or {}
+        print("    BD status=%s SQ=%s CD=%s maxlength=%s taskstate=%s" % (
+            bd.get("status"), bd.get("SQ"), bd.get("CD"), bd.get("maxlength"), c.get("taskstate")))
+    elif t == "42213":
+        err = c.get("errormsg", c.get("error_msg"))
+        print("    发送结果 status=%s errormsg=%r" % (c.get("status"), err))
+    elif t == "42214":
+        print("    北斗收报 来自 %s：%s" % (c.get("target_id"), c.get("msg")))
+        send(sock, make(42215, {"taskid": c.get("taskid", ""), "status": 0}, obj.get("msg_id")))
+
+
+def rx_loop(sock):
+    while True:
+        try:
+            data, addr = sock.recvfrom(8192)
+        except OSError:
+            return
+        text = data.decode("utf-8", "replace")
+        print("&lt;&lt;&lt; %s:%d %s" % (addr[0], addr[1], text))
+        try:
+            show(sock, json.loads(text))
+        except ValueError:
+            print("    (不是合法 JSON)")
+
+
+def command(sock, line):
+    parts = line.strip().split(maxsplit=2)
+    if not parts:
+        return True
+    op = parts[0].lower()
+    if op == "q":
+        return False
+    if op == "hb":
+        send(sock, make(42201, {"taskid": str(uuid.uuid4())}))
+    elif op == "bd" and len(parts) &gt;= 3:
+        send(sock, make(42212, {"taskid": str(uuid.uuid4()), "target_id": parts[1], "msg": parts[2]}))
+    elif op == "raw" and len(parts) &gt;= 2:
+        sock.sendto(line.strip()[3:].strip().encode("utf-8"), BOARD)
+    else:
+        print(__doc__)
+    return True
+
+
+def main():
+    global BOARD
+    args = sys.argv[1:]
+    if "--board" in args:
+        i = args.index("--board")
+        ip, port = args[i + 1].split(":")
+        BOARD = (ip, int(port))
+        del args[i:i + 2]
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(("0.0.0.0", LOCAL_PORT))
+    threading.Thread(target=rx_loop, args=(sock,), daemon=True).start()
+    print("终端模拟器：本地 UDP %d &lt;-&gt; 本机 %s:%d" % (LOCAL_PORT, BOARD[0], BOARD[1]))
+
+    if args:                                    # 一次性命令
+        command(sock, " ".join(args))
+        time.sleep(15 if args[0] == "bd" else 3)
+    else:                                       # 交互模式
+        try:
+            while command(sock, input()):
+                pass
+        except (KeyboardInterrupt, EOFError):
+            pass
+    sock.close()
+
+
+if __name__ == "__main__":
+    main()</pre></div>
+
+    <h3 id="sa-3">A.3 cmp_nocomment.py —— 比对 ye_ch 和 no_ch</h3>
+    <p class="note">去掉注释、空行、多余空白后逐行比较 <code>src/*.c</code>、<code>inc/*.h</code>。当前两份代码比对结果：一致。</p>
+    <div class="codebox"><pre class="code">#!/usr/bin/env python3
+"""
+cmp_nocomment.py —— 比对 ye_ch 和 no_ch 两份工程：去掉注释、空行、行尾空白后逐行比较
+
+用法：python cmp_nocomment.py &lt;ye_ch 的 CommGateway 目录&gt; &lt;no_ch 的 CommGateway 目录&gt;
+例：  python cmp_nocomment.py E:/code/80-81/claude/05/ye_ch/Projects/CommGateway E:/code/80-81/claude/05/no_ch/Projects/CommGateway
+只比 src/*.c 和 inc/*.h；有差异的文件打印前几处不同的代码行。
+"""
+import difflib
+import re
+import sys
+from pathlib import Path
+
+
+def strip(text):
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)     # 块注释
+    text = re.sub(r"//[^\n]*", "", text)                   # 行注释
+    lines = [re.sub(r"\s+", " ", ln).strip() for ln in text.splitlines()]
+    return [ln for ln in lines if ln]
+
+
+def main():
+    if len(sys.argv) != 3:
+        print(__doc__)
+        return
+    a, b = Path(sys.argv[1]), Path(sys.argv[2])
+    same = True
+    for sub in ("src", "inc"):
+        for fa in sorted((a / sub).glob("*.[ch]")):
+            fb = b / sub / fa.name
+            if not fb.exists():
+                print("缺文件：%s" % fb)
+                same = False
+                continue
+            la = strip(fa.read_text(encoding="utf-8", errors="replace"))
+            lb = strip(fb.read_text(encoding="utf-8", errors="replace"))
+            if la != lb:
+                same = False
+                print("不一致：%s/%s" % (sub, fa.name))
+                diff = [d for d in difflib.unified_diff(la, lb, "ye_ch", "no_ch", n=0, lineterm="")
+                        if d[:1] in "+-" and d[:3] not in ("+++", "---")]
+                for d in diff[:10]:
+                    print("    " + d)
+    print("两份代码一致" if same else "有差异，按上面的提示同步")
+
+
+if __name__ == "__main__":
+    main()</pre></div>
+
+    <p class="note" style="margin-top:20px">协议出处：<code>3.md</code>（HTQ206S 使用维护说明书：表 2 语句列表、表 3 PWI、表 4 OFQ、表 6 ICP、表 9 TCQ、表 10 IBD、表 12 TCI）；FKI 字段按 <code>111.pdf</code> 截图识别，标"待实测"处需要用真模块确认。</p>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('pre.code').forEach(function (pre) {
+    var box = pre.parentElement;
+    if (!box || !box.classList.contains('codebox')) return;
+    var btn = document.createElement('button');
+    btn.className = 'copy';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var text = pre.innerText;
+      function done(ok) { btn.textContent = ok ? '已复制' : '复制失败'; setTimeout(function () { btn.textContent = '复制'; }, 1500); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { done(document.execCommand('copy')); } catch (e) { done(false); }
+        document.body.removeChild(ta);
+      }
+    });
+    box.appendChild(btn);
+  });
+</script>
+</body>
+</html>

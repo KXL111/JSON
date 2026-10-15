@@ -1,0 +1,8 @@
+在E:\code\80-81\claude\03基础上：
+
+1.北斗使用RS422，天通RS232,抛弃之前UDP通信，除了终端还是用UDP
+2.北斗天通上传数据包，组包json上传，msg id和task id自己生成对应的标准uuid
+3.数据存储有没有必要换成环形缓冲区或者环形队列？
+4.E:\code\80-81\refer\file_refer\1\test.txt，为当初
+  E:\code\80-81\refer\code_refer\09测试记录，你可以参照一下
+5.删除所有旧的md,html，修改完全部改为最新的，新增代码添加注释

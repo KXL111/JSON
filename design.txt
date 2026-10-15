@@ -1,0 +1,7 @@
+将E:\code\80-81\claude\04  移植平台到STM32F407ZGT6
+
+具体参考文件为  refer文件夹  其中包括移植平台原理图
+
+UDP可参考E:\code\80-81\claude\05\refer\2，标准例程-库函数版本\实验55 网络通信实验
+
+调试打印串口为USART1,PA9,PA10

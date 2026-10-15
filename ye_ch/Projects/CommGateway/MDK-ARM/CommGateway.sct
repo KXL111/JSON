@@ -1,0 +1,24 @@
+; *************************************************************
+; CommGateway.sct —— 分散加载文件（STM32F407ZGT6：Flash 1MB，SRAM 128KB + CCM 64KB）
+;
+; 和 Keil 按 Target 页自动生成的文件只差一处：FreeRTOS 的堆（heap_4.o 的 ucHeap，64KB）
+; 单独放进 CCM（RW_IRAM2），主 SRAM（RW_IRAM1）留给其余所有变量。
+;   - 主 SRAM 0x20000000，128KB：ETH / USART 的 DMA 能访问，DMA 缓冲必须在这里
+;   - CCM     0x10000000， 64KB：只有 CPU 能访问（DMA 访问不到），放任务栈、队列等 RTOS 对象正合适
+; 原工程（GD32F450）用了 168KB RAM，STM32F407 的主 SRAM 只有 128KB，不把 RTOS 堆移到 CCM 放不下。
+; *************************************************************
+
+LR_IROM1 0x08000000 0x00100000  {    ; 加载区：内部 Flash 1MB
+  ER_IROM1 0x08000000 0x00100000  {  ; 代码和常量（含 GBK 对照表）
+   *.o (RESET, +First)
+   *(InRoot$$Sections)
+   .ANY (+RO)
+   .ANY (+XO)
+  }
+  RW_IRAM1 0x20000000 0x00020000  {  ; 主 SRAM 128KB：全局变量、lwIP 内存池、DMA 缓冲、启动栈
+   .ANY (+RW +ZI)
+  }
+  RW_IRAM2 0x10000000 0x00010000  {  ; CCM 64KB：FreeRTOS 堆（任务栈、队列、信号量、lwIP 邮箱都从这里分配）
+   heap_4.o (+ZI)
+  }
+}

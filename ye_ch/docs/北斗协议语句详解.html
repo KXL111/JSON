@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>北斗协议语句详解</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --fg: #1d2129; --muted: #5f6772; --line: #d6d3ca;
+    --blue: #2f5bd3; --blue-soft: #e9effd;
+    --green: #12805c; --green-soft: #e4f4ec;
+    --amber: #b25e09; --amber-soft: #fcf0de;
+    --violet: #6f42c1; --violet-soft: #f0e9fb;
+    --slate: #556070; --slate-soft: #eceef2;
+    --red: #c4302b; --red-soft: #fbeae9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141619; --surface: #1c1f25; --fg: #e6e8eb; --muted: #9ba4ae; --line: #363b44;
+      --blue: #8eabff; --blue-soft: #1d2a48;
+      --green: #62d1a5; --green-soft: #15322a;
+      --amber: #f0a95c; --amber-soft: #392916;
+      --violet: #baa0ff; --violet-soft: #2b2341;
+      --slate: #a9b2bf; --slate-soft: #262a31;
+      --red: #ff7d74; --red-soft: #3c1d1c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141619; --surface: #1c1f25; --fg: #e6e8eb; --muted: #9ba4ae; --line: #363b44;
+    --blue: #8eabff; --blue-soft: #1d2a48;
+    --green: #62d1a5; --green-soft: #15322a;
+    --amber: #f0a95c; --amber-soft: #392916;
+    --violet: #baa0ff; --violet-soft: #2b2341;
+    --slate: #a9b2bf; --slate-soft: #262a31;
+    --red: #ff7d74; --red-soft: #3c1d1c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body { font: 15px/1.7 "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 0 0 4px; }
+  h3 { font-size: 16px; margin: 22px 0 4px; }
+  p { margin: 8px 0; }
+  a { color: var(--blue); }
+  .lead { color: var(--muted); margin: 0 0 14px; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; }
+  nav a { color: var(--fg); text-decoration: none; border: 1px solid var(--line); background: var(--surface);
+          border-radius: 999px; padding: 2px 12px; font-size: 13.5px; }
+  nav a:hover { border-color: var(--blue); color: var(--blue); }
+  nav a.other { border-color: var(--blue); color: var(--blue); }
+  section { margin-top: 40px; }
+  .note { color: var(--muted); margin: 0; font-size: 14px; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.92em; overflow-wrap: anywhere; }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin-top: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  td.nowrap { white-space: nowrap; }
+  td code, th code { white-space: nowrap; }
+
+  ol.steps { margin: 10px 0 0; padding-left: 1.7em; }
+  ol.steps li { margin: 7px 0; padding-left: 2px; }
+  ul.tight { margin: 8px 0 0; padding-left: 1.4em; }
+  ul.tight li { margin: 4px 0; }
+  .callout { margin: 14px 0 0; padding: 10px 14px; border-left: 3px solid var(--blue); background: var(--blue-soft);
+             border-radius: 0 8px 8px 0; font-size: 14px; }
+  .callout.warn { border-left-color: var(--amber); background: var(--amber-soft); }
+  .callout.new { border-left-color: var(--violet); background: var(--violet-soft); }
+  .callout.ok { border-left-color: var(--green); background: var(--green-soft); }
+
+  pre.code { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+             padding: 12px 14px; margin: 12px 0 0; font: 13px/1.6 Consolas, "Cascadia Mono", "Microsoft YaHei", monospace; }
+  pre.code b { color: var(--blue); font-weight: 700; }
+  pre.code i { color: var(--amber); font-style: normal; }
+
+  .k { display: inline-block; font: 600 11.5px/18px "Microsoft YaHei", system-ui, sans-serif; color: var(--slate);
+       background: var(--slate-soft); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+  .dir { display: inline-block; font: 600 12px/20px "Microsoft YaHei", monospace; border-radius: 5px; padding: 0 7px; white-space: nowrap; }
+  .dir.in { color: var(--green); background: var(--green-soft); border: 1px solid var(--line); }
+  .dir.out { color: var(--blue); background: var(--blue-soft); border: 1px solid var(--line); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-top: 16px; }
+  .card h2 { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card h2 .zh { color: var(--muted); font-size: 15px; font-weight: 400; }
+  .tag { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 10px; border: 1px solid var(--line); }
+  .tag.read { color: var(--green); background: var(--green-soft); }
+  .tag.sig  { color: var(--violet); background: var(--violet-soft); }
+  .tag.send { color: var(--blue); background: var(--blue-soft); }
+  .tag.fb   { color: var(--amber); background: var(--amber-soft); }
+  .tag.recv { color: var(--slate); background: var(--slate-soft); }
+  .grid2 { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .lbl { color: var(--muted); font-size: 13px; margin: 14px 0 0; font-weight: 600; letter-spacing: .02em; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>北斗协议语句详解</h1>
+    <p class="lead">围绕北斗 RDSS（卫星短报文）模块的串口语句，讲清 <b>读卡 / SQ / TCQ / FKI / TCI</b> 这五件事：各<strong>为了获取什么</strong>、<strong>怎么获取</strong>（谁发、发什么、收什么），并给出<strong>真实格式的举例</strong>。字段口径与本项目 <code>README.md</code>、<code>design.txt</code> 一致。</p>
+    <nav>
+      <a href="#s0">0 全景</a>
+      <a href="#s1">1 读卡 ICR/ICP</a>
+      <a href="#s2">2 SQ 信号质量</a>
+      <a href="#s3">3 TCQ 发报</a>
+      <a href="#s4">4 FKI 回执</a>
+      <a href="#s5">5 TCI 收报</a>
+      <a href="#s6">6 一次完整发报</a>
+      <a class="other" href="运作流程详解.html">运作流程详解 →</a>
+      <a class="other" href="流程框图.html">流程框图 →</a>
+    </nav>
+  </header>
+
+  <!-- ============================== 0 全景 ============================== -->
+  <section id="s0">
+    <h2>0 全景：五件事与一句话职责</h2>
+    <p class="note">北斗模块挂在 <code>RS422</code>（USART6，38400）上。本机发给模块的语句以 <code>$CC…</code> 开头，模块回给本机的以 <code>$BD…</code> 开头；<strong>解析只看后 3 个字母</strong>，不看发送方标识。</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>名称</th><th>语句</th><th>方向</th><th>为了获取什么</th><th>怎么触发</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="tag read">读卡</span></td>
+            <td class="nowrap"><code>$CCICR</code> → <code>$BDICP</code></td>
+            <td><span class="dir out">本机→模块</span> / <span class="dir in">模块→本机</span></td>
+            <td>卡号、区域/全球<strong>服务频度(CD)</strong>、<strong>通信长度等级(maxlength)</strong>、收发权限</td>
+            <td>上电后每 5 s 发一次查询，收到 ICP 即停</td>
+          </tr>
+          <tr>
+            <td><span class="tag sig">SQ</span></td>
+            <td class="nowrap"><code>$BDGSS</code> + <code>PWI</code></td>
+            <td><span class="dir in">模块→本机</span></td>
+            <td>信号质量等级 <strong>0~4</strong>，并据此定 <strong>status</strong>（在线/离线/异常）</td>
+            <td>模块每秒自动输出，被动解析</td>
+          </tr>
+          <tr>
+            <td><span class="tag send">TCQ</span></td>
+            <td class="nowrap"><code>$BDTCQ</code></td>
+            <td><span class="dir out">本机→模块</span></td>
+            <td>把一条短报文<strong>发出去</strong>（请求发射）</td>
+            <td>终端下发 42212 → 组包成 TCQ 发出</td>
+          </tr>
+          <tr>
+            <td><span class="tag fb">FKI</span></td>
+            <td class="nowrap"><code>$BDFKI</code></td>
+            <td><span class="dir in">模块→本机</span></td>
+            <td>上一条 TCQ 的<strong>发射结果</strong>（成功/失败、失败原因、还要等几秒）</td>
+            <td>发完 TCQ 后等它，10 s 没来算超时</td>
+          </tr>
+          <tr>
+            <td><span class="tag recv">TCI</span></td>
+            <td class="nowrap"><code>$BDTCI</code></td>
+            <td><span class="dir in">模块→本机</span></td>
+            <td>别人/中心<strong>发来的短报文内容</strong>（收报）</td>
+            <td>模块随时上报，被动解析</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      一句话分清：<b>读卡</b>问"这张卡能干什么" → <b>SQ</b>看"现在信号行不行" → <b>TCQ</b>"我要发" → <b>FKI</b>"发没发成" → <b>TCI</b>"有人给我发了"。
+    </div>
+  </section>
+
+  <!-- ============================== 1 读卡 ============================== -->
+  <section id="s1" class="card">
+    <h2><span class="tag read">读卡</span> ICR / ICP <span class="zh">— 读北斗卡的身份与能力</span></h2>
+
+    <p class="lbl">① 为了获取什么</p>
+    <ul class="tight">
+      <li><b>卡号</b> <code>bd_id</code>（本机北斗号码，7 字节）。</li>
+      <li><b>服务频度 CD</b>：区域与全球各一个"最短发送间隔"。有权限才记频度，没权限记 0。<strong>上传取全球频度</strong>。</li>
+      <li><b>通信长度等级 maxlength</b>：1~5 级，决定单条最多能发多少字（查 <code>design.txt</code> 的 CN/EN 表）。<strong>上传取 CN（汉字数）</strong>。</li>
+      <li>区域 / 全球的收发权限（没权限就别发，发了也被拒）。</li>
+    </ul>
+
+    <p class="lbl">② 怎么获取</p>
+    <p class="note">本机主动问、模块回答。上电后每 <code>5 s</code>（<code>CFG_BD_ICR_RETRY_MS</code>）发一次查询语句，<strong>收到一次 ICP 就不再问</strong>。</p>
+    <pre class="code">本机发 <b>$CCICR</b>,0,00          <i>// 查询卡信息，固定参数</i>
+模块回 <b>$BDICP</b>,...,<i>卡号</i>,...,<i>区域权限</i>,<i>区域频度</i>,<i>长度等级</i>,...,<i>全球权限</i>,<i>全球频度</i>,...*hh</pre>
+
+    <p class="lbl">③ ICP 关键字段（本项目口径）</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>字段</th><th>含义</th><th>映射到</th></tr></thead>
+        <tbody>
+          <tr><td class="nowrap">第 13 字段</td><td>区域收发权限</td><td>有权限才记区域频度，否则区域 CD=0</td></tr>
+          <tr><td class="nowrap">第 14 字段</td><td>区域服务频度（秒）</td><td>区域 CD</td></tr>
+          <tr><td class="nowrap">第 15 字段</td><td><b>通信长度等级 1~5</b></td><td><b>maxlength</b>（查 CN/EN 表）</td></tr>
+          <tr><td class="nowrap">第 17 字段</td><td>全球短报文权限</td><td>有权限才记全球频度，否则全球 CD=0</td></tr>
+          <tr><td class="nowrap">第 18 字段</td><td>全球服务频度（秒）</td><td><b>全球 CD（上传用这个）</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="lbl">④ 举例</p>
+    <pre class="code"><i>// 第 15 字段 = 3 → 通信长度等级 3</i>
+design.txt: CN_MAX_COUNT_LEVEL3 = 323-1 = <b>322</b> 个汉字   EN = 646-4 = 642 个字符
+<i>// 第 18 字段 = 60 → 全球每 60 s 才能发一条</i>
+→ 心跳里：<b>CD=60</b>，<b>maxlength="322"</b>（字符串，含汉字数）</pre>
+    <div class="callout ok">读卡成功 = 本机知道了"我是谁、我能发多长、多久能发一次"。这三样是后面 TCQ 发报的前提。</div>
+  </section>
+
+  <!-- ============================== 2 SQ ============================== -->
+  <section id="s2" class="card">
+    <h2><span class="tag sig">SQ</span> 信号质量 <span class="zh">— 现在能不能发、在不在线</span></h2>
+
+    <p class="lbl">① 为了获取什么</p>
+    <ul class="tight">
+      <li><b>SQ：信号质量等级 0~4</b>（<code>design.txt</code> 口径，0 最差、4 最好）。</li>
+      <li>由 SQ 派生 <b>status</b>：串口 5 s 无有效语句 → <b>2 异常</b>；否则 SQ=0 → <b>1 离线</b>，SQ&gt;0 → <b>0 在线</b>。</li>
+    </ul>
+
+    <p class="lbl">② 怎么获取</p>
+    <p class="note">不用问，模块<strong>每秒自动输出</strong>卫星/波束信息，本机被动解析、每秒刷新。用两路信息折算：</p>
+    <ul class="tight">
+      <li><b>GSS</b>（全球模块）：<code>$BDGSS</code> 第 1 字段 = 可用卫星数量。</li>
+      <li><b>PWI</b>（新体制波束）：波束锁定数量。</li>
+      <li>算法：每一路取 <code>min(数量, 4)</code> 封顶成 0~4；两路都有取平均（四舍五入），只有一路就用那一路；<strong>超过 5 s（<code>CFG_BD_SIGNAL_STALE_MS</code>）没更新的不算</strong>；串口异常时 SQ=0。</li>
+    </ul>
+    <div class="callout warn">
+      为什么不用旧体制：只取旧体制出站波束时 SQ 恒为 0，所以改用<strong>新体制波束锁定数</strong>（<code>bd_task.c</code> 的 <code>on_pwi()</code>）。等级封顶策略在 <code>sig_level()</code> 里，实测后可调。
+    </div>
+
+    <p class="lbl">③ 举例</p>
+    <pre class="code"><b>$BDGSS</b>,02,32,41,39,45,13,32,41,65,198*79
+          └┬┘
+       可用卫星=<b>2</b>  →  min(2,4)=2
+
+PWI 波束锁定=3       →  min(3,4)=3
+两路平均 (2+3)/2 = 2.5 → 四舍五入 <b>SQ=3</b> → status=0（在线）
+
+<i>// 若 GSS 第 1 字段=00 且 PWI 无锁定 → SQ=0 → status=1（离线）</i>
+<i>// 若串口 5 s 没有任何有效语句   → status=2（异常）</i></pre>
+  </section>
+
+  <!-- ============================== 3 TCQ ============================== -->
+  <section id="s3" class="card">
+    <h2><span class="tag send">TCQ</span> 发报 <span class="zh">— 把短报文发出去</span></h2>
+
+    <p class="lbl">① 为了获取什么</p>
+    <p>它不是"获取"，而是<strong>动作</strong>：向模块请求把一条短报文发射出去。发射的<strong>结果</strong>要看下一节的 FKI。</p>
+
+    <p class="lbl">② 怎么获取（怎么发）</p>
+    <p class="note">终端下发 42212 → 北斗任务 <code>bd_submit()</code> 组包成 <code>$BDTCQ</code> → 串口 DMA 发出。<strong>混编方式</strong>（编码类型 3，汉字段以 <code>A4</code> 前缀的十六进制承载）。一次只发一条，<strong>必须等到 FKI 才发下一条</strong>。</p>
+    <pre class="code"><b>$BDTCQ</b>,<i>target_id</i>,2,2,3,<i>A4…报文数据…</i>,0*hh
+         │         │ │ │  └ 报文数据（混编：A4+十六进制 GBK）
+         │         │ │ └ 编码类型 3 = 混编
+         │         │ └ 入站确认申请 = 2   (CFG_BD_TCQ_CONFIRM)
+         │         └ 频点 = 2             (CFG_BD_TCQ_FREQ)
+         └ 对方卡号</pre>
+
+    <p class="lbl">③ 举例</p>
+    <pre class="code"><i>// 给卡号 1234567 发一条混编短报文</i>
+<b>$BDTCQ</b>,1234567,2,2,3,A4...,0*hh
+→ 串口 DMA 发出（1000 汉字约 4.1 KB，38400 下约发 1.1 s）
+→ 进入"等 FKI"状态</pre>
+    <div class="callout">本机最多处理 <b>1000 个汉字</b>（约 2000 字节 GBK）。是否超过卡等级上限由模块判断，结果通过 FKI 回来。发送期间北斗任务照常收数据、喂狗。</div>
+  </section>
+
+  <!-- ============================== 4 FKI ============================== -->
+  <section id="s4" class="card">
+    <h2><span class="tag fb">FKI</span> 回执 <span class="zh">— 上一条 TCQ 发没发成</span></h2>
+
+    <p class="lbl">① 为了获取什么</p>
+    <ul class="tight">
+      <li>上一条 TCQ 的<b>执行情况</b>：成功 Y / 失败 N。</li>
+      <li>失败时的<b>原因码</b>与<b>还要等待的秒数</b>（频度控制）。</li>
+      <li>由此维护 <code>bd_fki</code>（RD 发送间隔 / 剩余空闲时间，0=空闲、非 0=还要等）。</li>
+    </ul>
+
+    <p class="lbl">② 怎么获取</p>
+    <p class="note">发完 TCQ 后被动等 <code>$BDFKI</code>。超时 <code>CFG_BD_FKI_TIMEOUT_MS = 10 s</code>（从"发完"算，另加串口发送时间）。<strong>只认指令名为 TCQ 的 FKI</strong>（OFQ/EPQ/QRQ 等也会出 FKI，忽略）。</p>
+    <pre class="code"><b>$BDFKI</b>,<i>时间</i>,<i>指令名称</i>,<i>执行情况</i>,<i>失败原因</i>,<i>等待时间</i>*hh</pre>
+
+    <p class="lbl">③ 举例与处理</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>FKI 实例</th><th>含义</th><th>本机处理</th></tr></thead>
+        <tbody>
+          <tr><td><code>$BDFKI,032025,TCQ,Y,0,0*77</code></td><td>TCQ 发射成功</td><td>回终端 <b>status 0</b></td></tr>
+          <tr><td><code>$BDFKI,032816,TCQ,N,1,7*6E</code></td><td>失败：原因 1=频度未到，7=还要等 7 秒</td><td>status 1，<code>BD send too frequent, wait 7s</code></td></tr>
+          <tr><td>其他失败原因</td><td>手册未列出</td><td>status 1，<code>BD rejected, FKI reason x, y</code> 原样带回</td></tr>
+          <tr><td>10 s 没来 / 串口 1.5 s 没发完</td><td>超时 / 串口忙</td><td>回失败，<code>BD serial busy</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn">存疑：手册只给了一个失败示例 <code>N,1,7</code>，"1=频度未到、7=等待秒数"是按所在章节推断；其他原因码实测后在 <code>on_fki()</code> 里补。电量不足时模块表现为 <code>$BDFKI</code> 第 4 字段 = <code>2</code>（见 design.txt）。</div>
+  </section>
+
+  <!-- ============================== 5 TCI ============================== -->
+  <section id="s5" class="card">
+    <h2><span class="tag recv">TCI</span> 收报 <span class="zh">— 别人发给我的短报文</span></h2>
+
+    <p class="lbl">① 为了获取什么</p>
+    <p>获取<b>入站短报文的内容</b>（中心站或其他卡发来的报文），解析后推给终端（42214）。</p>
+
+    <p class="lbl">② 怎么获取</p>
+    <p class="note">模块随时上报 <code>$BDTCI</code>，本机被动解析、解码、转码：</p>
+    <ol class="steps">
+      <li>读<b>编码类型</b>字段。</li>
+      <li>类型 3（混编）：去掉 <code>A4</code> 前缀，按十六进制还原成 GBK；其他类型：数据本身就是 GBK / ASCII。</li>
+      <li>统一<b>转成 UTF-8</b>。</li>
+      <li>组包成 42214 上报终端。</li>
+    </ol>
+
+    <p class="lbl">③ 举例</p>
+    <pre class="code"><b>$BDTCI</b>,<i>发送方卡号</i>,…,3,<i>A4…十六进制…</i>*hh
+  → 编码类型 3（混编）→ 去 A4 → 十六进制还原 GBK → 转 UTF-8
+  → 42214 上报终端："收到一条报文：……"</pre>
+    <div class="callout">TCI 与 TCQ 是一对：TCQ 是"我发出去"，TCI 是"我收进来"，混编的编码/解码规则两边对称。</div>
+  </section>
+
+  <!-- ============================== 6 完整发报 ============================== -->
+  <section id="s6">
+    <h2>6 串起来看：一次完整的发报 + 收报</h2>
+    <pre class="code"><i>上电</i>
+每 5s 本机 ──<b>$CCICR</b>,0,00──▶ 模块        <span>读卡：问卡能力</span>
+      本机 ◀──<b>$BDICP</b>,…卡号/频度/长度等级── 模块   <span>拿到 bd_id / CD / maxlength，停止再问</span>
+每 1s 本机 ◀──<b>$BDGSS</b> + <b>PWI</b>── 模块    <span>算 SQ(0~4) → status(在线/离线/异常)</span>
+
+<i>终端要发报</i>
+终端 ──42212──▶ 本机 ──<b>$BDTCQ</b>,对方卡号,2,2,3,A4…,0──▶ 模块   <span>TCQ：发射请求</span>
+终端 ◀──42213── 本机 ◀──<b>$BDFKI</b>,…,TCQ,Y,0,0── 模块          <span>FKI：成功/失败回执</span>
+
+<i>有人发报进来</i>
+终端 ◀──42214── 本机 ◀──<b>$BDTCI</b>,…,3,A4…── 模块             <span>TCI：收报并转 UTF-8</span></pre>
+    <div class="callout new">
+      记忆线：<b>ICR/ICP</b>（我是谁、能发多长、多久一次）→ <b>GSS/PWI→SQ</b>（现在信号行不行）→ <b>TCQ</b>（发）→ <b>FKI</b>（发成没）→ <b>TCI</b>（收）。读卡和 SQ 是"状态面"，TCQ/FKI/TCI 是"数据面"。
+    </div>
+    <p class="note" style="margin-top:16px">字段与配置项来源：<code>README.md</code>（§ 配置表、北斗字段表、短报文收发）、<code>design.txt</code>（SQ/CD/maxlength 设计、CN/EN 容量表）。TCQ/ICR 语句头照 <code>3.md</code> 示例；FKI 字段按 <code>111.pdf</code> 截图识别，标注"存疑"处待实测核实。</p>
+  </section>
+</main>
+</body>
+</html>

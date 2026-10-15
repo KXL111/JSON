@@ -1,0 +1,15 @@
+# Keil MDK build outputs
+*.o
+*.d
+*.crf
+*.axf
+*.lnp
+*.htm
+*.map
+*.lst
+*.dep
+*.bak
+*.hex
+*.uvguix.*
+*.ncb
+*.idb
